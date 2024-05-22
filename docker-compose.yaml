@@ -5,7 +5,7 @@ services:
     ports:
       - 8888:8888
     volumes:
-      - ./username:/username
+      - ./tf-yeo:/tf-yeo
     deploy:
       resources:
         reservations:

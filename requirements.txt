@@ -1,4 +1,3 @@
 jupyterlab
 pandas
 matplotlib
-opencv_python

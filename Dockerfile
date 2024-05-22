@@ -1,6 +1,6 @@
 FROM tensorflow/tensorflow:latest-gpu
 
-WORKDIR /username
+WORKDIR /tf-yeo
 
 COPY requirements.txt requirements.txt
 
