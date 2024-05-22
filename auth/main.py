@@ -28,6 +28,14 @@ from schema import get_db
 from schema import User
 from starlette import status
 
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from fastapi import HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from jwt import JWTError
+
+
 load_dotenv()
 app = FastAPI()
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -68,9 +76,32 @@ def create_refresh_token(data: dict):
     copy_data.update({"exp": exp})
     return jwt.encode(copy_data, REFRESH_SECRET_KEY)
 
+def send_verification_email(email: str, token: str):
+    mail_content = f'''
+    Please click on the link to verify your account:
+    http://localhost:8000/verify?token={token}
+    '''
+
+    message = MIMEMultipart()
+    message['From'] = os.getenv("EMAIL")
+    message['To'] = email
+    message['Subject'] = 'Account Verification'   
+    message.attach(MIMEText(mail_content, 'plain'))
+
+    #Create SMTP session for sending the mail
+    session = smtplib.SMTP('smtp.gmail.com', 587)
+    session.starttls()
+    session.login(os.getenv("EMAIL"), os.getenv("EMAIL_PASS")) 
+    text = message.as_string()
+    session.sendmail(os.getenv("EMAIL"), email, text)
+    session.quit()
+
+
+
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
     return payload
+
 
 @app.get("/")
 async def read_root(request: Request):
@@ -117,9 +148,9 @@ async def register(user: User, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
     user.password = get_password_hash(user.password)
-    db.add(user)
-    db.commit()
-    return {"message": "User registered successfully"}
+    access_token = create_access_token({"email": user.email, "username": user.username, "password": user.password})
+    send_verification_email(user.email, access_token)
+    return {"message": "Check your email for verification!"}
 
 @app.post("/login")
 async def login(user: User, db: Session = Depends(get_db)):
@@ -134,6 +165,31 @@ async def login(user: User, db: Session = Depends(get_db)):
     refresh_token = create_refresh_token({"email": db_user.email, "username": db_user.username})
 
     return JSONResponse(content={"access_token": access_token, "refresh_token": refresh_token, "user":{"name": db_user.username, "email":db_user.email}})
+
+credentials_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+
+
+@app.get("/verify")
+async def verify(token: str, db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        email = payload.get("email")
+        username = payload.get("username")
+        password = payload.get("password")
+        if email is None or username is None or password is None:
+            raise credentials_exception
+        user = User(email=email, username=username, password=password)
+        access_token = create_access_token({"email": email, "username": username})
+        refresh_token = create_refresh_token({"email": email, "username": username})
+        db.add(user)
+        db.commit()
+    except JWTError:
+        raise credentials_exception
+    return {"message": "User verified successfully", "access_token": access_token, "refresh_token": refresh_token}
 
 @app.post("/refresh-token")
 async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
