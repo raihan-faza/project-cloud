@@ -1,5 +1,6 @@
 import datetime
 from fastapi import (
+    APIRouter,
     Depends,
     FastAPI,
     Request,
@@ -33,11 +34,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from jwt import JWTError
 
 
 load_dotenv()
-app = FastAPI()
+app = APIRouter()
 SECRET_KEY = os.getenv("SECRET_KEY")
 REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY")
 
@@ -58,7 +58,7 @@ oauth = OAuth()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="google/login")
 oauth.register(**OAUTH_PROVIDERS["google"])
 
-app.add_middleware(SessionMiddleware, secret_key="secret")
+# app.add_middleware(SessionMiddleware, secret_key="secret")
 
 
 def get_password_hash(password):
@@ -187,7 +187,7 @@ async def verify(token: str, db: Session = Depends(get_db)):
         refresh_token = create_refresh_token({"email": email, "username": username})
         db.add(user)
         db.commit()
-    except JWTError:
+    except:
         raise credentials_exception
     return {"message": "User verified successfully", "access_token": access_token, "refresh_token": refresh_token}
 
@@ -204,10 +204,3 @@ async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     new_access_token = create_access_token({"email": user.email, "username": user.username})
     new_refresh_token = create_refresh_token({"email": user.email, "username": user.username})
     return {"access_token": new_access_token, "refresh_token": new_refresh_token}
-
-if __name__ == "__main__":
-    config = Config()
-    config.bind = ["0.0.0.0:8000"]
-    config.use_reloader = True
-    config.use_debugger = True
-    serve(app, config)
