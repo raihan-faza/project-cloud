@@ -1,8 +1,11 @@
 package main
 
 import (
+	"api/cloud/initializers"
+	"api/cloud/models"
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -12,7 +15,7 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func createContainer(contaner_name string) (string, error) {
+func createContainer(container_name string, container_ram int, container_core int, container_storage int) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		panic(err)
@@ -25,21 +28,30 @@ func createContainer(contaner_name string) (string, error) {
 	}
 
 	portBinding := nat.PortMap{containerPort: []nat.PortBinding{hostBinding}}
+
 	cont, err := cli.ContainerCreate(context.Background(),
 		&container.Config{
 			Image: "fedora:latest",
 			ExposedPorts: nat.PortSet{
 				nat.Port("80"): {},
+				"22/tcp":       struct{}{},
 			},
 			Tty: true,
 			//Cmd: []string{"bash", "-c", "dnf install -y openssh-server && systemctl enable sshd && systemctl start sshd"},
 		},
 		&container.HostConfig{
 			PortBindings: portBinding,
+			Resources: container.Resources{
+				NanoCPUs: int64(container_core) * 1e9,
+				Memory:   int64(container_ram) * 1024 * 1024 * 1024,
+			},
+			StorageOpt: map[string]string{
+				"size": strconv.Itoa(container_storage) + "G",
+			},
 		},
 		&network.NetworkingConfig{},
 		&v1.Platform{},
-		contaner_name,
+		container_name,
 	)
 
 	if err != nil {
@@ -92,6 +104,11 @@ func stopContainer(cont_id string) string {
 	return "container stopped"
 }
 
+func init() {
+	initializers.ConnectDatabase()
+	initializers.LoadEnv()
+}
+
 func main() {
 	//createContainer("hello")
 	//createContainer("test")
@@ -99,25 +116,30 @@ func main() {
 	//stopContainer("1ea1b9587837")
 	//startContainer("1ea1b9587837")
 	//unpauseContainer("1ea1b9587837")
+
 	r := gin.Default()
-	r.GET("/ping", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
 
 	r.POST("/container/create", func(ctx *gin.Context) {
-		container_name := ctx.Query("container_name")
-		id, err := createContainer(container_name)
+		container_name := "hello"
+		container_ram := 2
+		container_core := 1
+		container_storage := 10
+		user_id := ctx.Query("user_id")
+		user_token := ctx.Query("user_token")
+
+		id, err := createContainer(container_name, container_ram, container_core, container_storage)
 
 		if err != nil {
 			panic(err)
 		}
 
+		containerData := models.Container{ContainerID: id, UserID: user_id, UserToken: user_token}
+		initializers.DB.Create(&containerData)
+
 		ctx.JSON(
 			http.StatusOK,
 			gin.H{
-				"container_Id": id,
+				"container_Id": containerData.ContainerID,
 			},
 		)
 	})
