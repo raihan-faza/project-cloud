@@ -2,7 +2,6 @@ import datetime
 from fastapi import (
     APIRouter,
     Depends,
-    FastAPI,
     Request,
     HTTPException
 )
@@ -14,14 +13,10 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 import bcrypt
 import jwt
-
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import (
     RedirectResponse,
     JSONResponse
 )
-from hypercorn.asyncio import serve
-from hypercorn.config import Config
 from dotenv import load_dotenv
 import os
 
@@ -44,8 +39,8 @@ REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY")
 OAUTH_PROVIDERS = {
     "google": {
         "name": "google",
-        "client_id": "1031929485356-0f2a323c0qj7s9c3hqg3dd8e5pgdku9l.apps.googleusercontent.com",
-        "client_secret": "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",
+        "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
         "authorize_url": "https://accounts.google.com/o/oauth2/auth",
         "token_url": "https://accounts.google.com/o/oauth2/token",
         "userinfo_url": "https://www.googleapis.com/oauth2/v1/userinfo",
@@ -55,7 +50,7 @@ OAUTH_PROVIDERS = {
 }
 
 oauth = OAuth()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="google/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 oauth.register(**OAUTH_PROVIDERS["google"])
 
 # app.add_middleware(SessionMiddleware, secret_key="secret")
@@ -81,6 +76,7 @@ def send_verification_email(email: str, token: str):
     Please click on the link to verify your account:
     http://localhost:8000/verify?token={token}
     '''
+    
 
     message = MIMEMultipart()
     message['From'] = os.getenv("EMAIL")
@@ -98,9 +94,20 @@ def send_verification_email(email: str, token: str):
 
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-    return payload
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    email = payload.get("email")
+    user = db.query(User).filter(User.email == email).first().to_safe_dict()
+    if user is None:
+        raise credentials_exception
+    return user
 
 
 @app.get("/")
