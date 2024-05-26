@@ -3,9 +3,10 @@ package main
 import (
 	"api/cloud/initializers"
 	"api/cloud/models"
+	"api/cloud/request"
 	"context"
+	"net"
 	"net/http"
-	"strconv"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -15,16 +16,30 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func createContainer(container_name string, container_ram int, container_core int, container_storage int) (string, error) {
+func findAvailablePort() (int, error) {
+	// Listen on port 0 to let the OS choose an available port
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return 0, err
+	}
+	defer listener.Close()
+
+	// Get the address of the listener
+	address := listener.Addr().(*net.TCPAddr)
+
+	return address.Port, nil
+}
+
+func createContainer(container_name string, container_ram int, container_core int) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	hostBinding := nat.PortBinding{HostIP: "0.0.0.0", HostPort: "5000"}
 	containerPort, err := nat.NewPort("tcp", "80")
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	portBinding := nat.PortMap{containerPort: []nat.PortBinding{hostBinding}}
@@ -45,9 +60,9 @@ func createContainer(container_name string, container_ram int, container_core in
 				NanoCPUs: int64(container_core) * 1e9,
 				Memory:   int64(container_ram) * 1024 * 1024 * 1024,
 			},
-			StorageOpt: map[string]string{
-				"size": strconv.Itoa(container_storage) + "G",
-			},
+			//StorageOpt: map[string]string{
+			//	"size": strconv.Itoa(container_storage) + "G",
+			//},
 		},
 		&network.NetworkingConfig{},
 		&v1.Platform{},
@@ -55,114 +70,258 @@ func createContainer(container_name string, container_ram int, container_core in
 	)
 
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	cli.ContainerStart(context.Background(), cont.ID, container.StartOptions{})
 
-	return cont.ID, nil
+	return cont.ID, err
 }
 
-func startContainer(cont_id string) string {
+func startContainer(cont_id string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	cli.ContainerStart(context.Background(), cont_id, container.StartOptions{})
 
-	return "container started"
+	return "container started", nil
 }
 
-func pauseContainer(cont_id string) string {
+func pauseContainer(cont_id string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	cli.ContainerPause(context.Background(), cont_id)
-	return "container paused"
+	return "container paused", nil
 }
 
-func unpauseContainer(cont_id string) string {
+func unpauseContainer(cont_id string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	cli.ContainerUnpause(context.Background(), cont_id)
-	return "container unpaused"
+	return "container unpaused", nil
 }
 
-func stopContainer(cont_id string) string {
+func stopContainer(cont_id string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	cli.ContainerStop(context.Background(), cont_id, container.StopOptions{})
-	return "container stopped"
+	return "container stopped", nil
 }
 
 func init() {
-	initializers.ConnectDatabase()
 	initializers.LoadEnv()
 }
 
 func main() {
-	//createContainer("hello")
-	//createContainer("test")
-	//pauseContainer("1ea1b9587837")
-	//stopContainer("1ea1b9587837")
-	//startContainer("1ea1b9587837")
-	//unpauseContainer("1ea1b9587837")
-
 	r := gin.Default()
 
+	db, _ := initializers.ConnectDatabase()
+
 	r.POST("/container/create", func(ctx *gin.Context) {
-		container_name := "hello"
-		container_ram := 2
-		container_core := 1
-		container_storage := 10
-		user_id := ctx.Query("user_id")
-		user_token := ctx.Query("user_token")
-
-		id, err := createContainer(container_name, container_ram, container_core, container_storage)
-
+		var newContainer models.Container
+		err := ctx.BindJSON(&newContainer)
 		if err != nil {
-			panic(err)
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "bad request",
+				},
+			)
+			return
 		}
 
-		containerData := models.Container{ContainerID: id, UserID: user_id, UserToken: user_token}
-		initializers.DB.Create(&containerData)
+		container_id, err := createContainer(newContainer.ContainerName, newContainer.ContainerRam, newContainer.ContainerCore)
+		if err != nil {
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "failed to create container",
+				},
+			)
+			return
+		}
+
+		cont := db.Create(&newContainer)
+		if cont.Error != nil {
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "failed to save container data",
+				},
+			)
+			return
+		}
 
 		ctx.JSON(
 			http.StatusOK,
 			gin.H{
-				"container_Id": containerData.ContainerID,
+				"container_Id": container_id,
 			},
 		)
 	})
 
 	r.POST("/container/start", func(ctx *gin.Context) {
-		container_id := ctx.Query("container_id")
-		startContainer(container_id)
+		var request request.ContainerRequest
+		err := ctx.BindJSON(&request)
+		if err != nil {
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "bad request",
+				},
+			)
+			return
+		}
+		message, err := startContainer(request.ContainerID)
+		if err != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to start container",
+				},
+			)
+			return
+		}
+		ctx.JSON(
+			http.StatusOK,
+			gin.H{
+				"message": message,
+			},
+		)
 	})
 
 	r.POST("/container/pause", func(ctx *gin.Context) {
-		container_id := ctx.Query("container_id")
-		pauseContainer(container_id)
+		var request request.ContainerRequest
+		err := ctx.BindJSON(&request)
+		if err != nil {
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "request error",
+				},
+			)
+			return
+		}
+		message, err := pauseContainer(request.ContainerID)
+		if err != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to pause container",
+				},
+			)
+			return
+		}
+		ctx.JSON(
+			http.StatusOK,
+			gin.H{
+				"message": message,
+			},
+		)
+
 	})
 
 	r.POST("/container/unpause", func(ctx *gin.Context) {
-		container_id := ctx.Query("container_id")
-		unpauseContainer(container_id)
+		var request request.ContainerRequest
+		err := ctx.BindJSON(&request)
+		if err != nil {
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "request error",
+				},
+			)
+			return
+		}
+		message, err := unpauseContainer(request.ContainerID)
+		if err != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to unpause container",
+				},
+			)
+			return
+		}
+		ctx.JSON(
+			http.StatusOK,
+			gin.H{
+				"message": message,
+			},
+		)
+
 	})
 
 	r.POST("/container/stop", func(ctx *gin.Context) {
-		container_id := ctx.Query("container_id")
-		stopContainer(container_id)
+		var request request.ContainerRequest
+		err := ctx.BindJSON(&request)
+		if err != nil {
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "request error",
+				},
+			)
+			return
+		}
+		message, err := stopContainer(request.ContainerID)
+		if err != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to stop container",
+				},
+			)
+			return
+		}
+		ctx.JSON(
+			http.StatusOK,
+			gin.H{
+				"message": message,
+			},
+		)
 	})
 
+	r.POST("/container/list", func(ctx *gin.Context) {
+		var request request.ContainerListRequest
+		var containers []models.Container
+		err := ctx.BindJSON(&request)
+		if err != nil {
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "request error",
+				},
+			)
+			return
+		}
+		data := db.Where("container_id= ?", request.UserID).Find(containers)
+		if data.Error != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "data not found",
+				},
+			)
+			return
+		}
+		ctx.JSON(
+			http.StatusOK,
+			gin.H{
+				"data": containers,
+			},
+		)
+	})
 	r.Run()
 }
