@@ -1,0 +1,97 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Dashboard {% endblock %} 
+
+<!-- Specific Page CSS goes HERE  -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+    <!-- <div class="row">
+        <div class="col-12 col-xl-8">
+            <div class="row">
+                <div class="col-12 mb-4"> -->
+                    <div class="card card-body border-0 shadow table-wrapper table-responsive">
+                        <div class="card-header">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <h2 class="fs-5 fw-bold mb-0">Your Recent Container</h2>
+                                </div>
+                                <div class="col text-end">
+                                    <a href="\templates\home\containers.html" class="btn btn-sm btn-primary">See all</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table align-items-center table-flush">
+                                <thead class="thead-light">
+                                <tr>
+                                    <th class="border-bottom" scope="col">Name</th>
+                                    <th class="border-bottom" scope="col">Image</th>
+                                    <th class="border-bottom" scope="col">Usage Time</th>
+                                    <th class="border-bottom" scope="col">Last Started</th>
+                                    <th class="border-bottom" scope="col">Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                    <th class="text-gray-900" scope="row">
+                                        Container 1
+                                    </th>
+                                    <td class="fw-bolder text-gray-500">
+                                        Coba1
+                                    </td>
+                                    <td class="fw-bolder text-gray-500">
+                                        <div class="d-flex">
+                                            2 Hours 13 Minutes
+                                        </div>
+                                    </td>
+                                    <td class="fw-bolder text-gray-500">
+                                        <div class="d-flex">
+                                            2 Hours 13 Minutes
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group" aria-label="Basic example">
+                                            <button class="btn btn-secondary play-button">▶</button>
+                                            <button class="btn btn-danger delete-button">🗑️</button>
+                                            <button class="btn btn-secondary duplicate-button">📋</button>
+                                          </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-body border-0 shadow table-wrapper table-responsive">
+        <div class="card-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h2 class="fs-5 fw-bold mb-0">Payment Logs</h2>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-items-center table-flush">
+                <thead class="thead-light">
+                <tr>
+                    <th class="border-bottom" scope="col">Name</th>
+                    <th class="border-bottom" scope="col">Image</th>
+                    <th class="border-bottom" scope="col">Price</th>
+                    <th class="border-bottom" scope="col">Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+{% endblock content %}
+
+<!-- Specific Page JS goes HERE  -->
+{% block javascripts %}{% endblock javascripts %}
