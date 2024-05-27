@@ -5,7 +5,7 @@ from fastapi import Depends, Request
 from fastapi.routing import APIRouter
 import midtransclient
 from requests import Session
-from api.schema import Payment, User, get_db
+from schema import Payment, User, get_db
 from auth.auth import get_current_user
 load_dotenv()
 
@@ -28,14 +28,16 @@ async def create_charge(req: Request, token:str = Depends(get_current_user), db:
                 "gross_amount": data.get("gross_amount")
             }
         }
+        print(token)
         charge_response = core.charge(charge_request)
-        new_payment = Payment(user_id=token.id, order_id=charge_response.order_id)
+        new_payment = Payment(user_id=token.get("id"), order_id=charge_response.get("order_id"))
         db.add(new_payment)
         db.commit()
     except Exception as e:
         print(e)
         raise e
-    return {"message":"success", "data":charge_response, "user": token.username}
+    # return {"message":"success"}
+    return {"message":"success", "data":charge_response, "user": token.get("username")}
 
 # @app.post("/charge")
 # async def create_charge():
@@ -58,8 +60,10 @@ async def notification(req: Request, db: Session = Depends(get_db)):
     if payment:
         if notification.get('transaction_status') == 'settlement' or notification.get('transaction_status') == 'capture':
             user = db.query(User).filter(User.id == payment.user_id).first()
-            user.balance += int(notification.get("gross_amount"))
-            db.commit()
+            gross_amount = notification.get("gross_amount")
+            if gross_amount is not None:
+                user.balance += int(round(float(gross_amount)))
+                db.commit()
     
     # notification = {
     #     "transaction_time": "2021-06-15 18:45:13",

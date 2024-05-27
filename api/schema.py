@@ -11,6 +11,7 @@ from sqlmodel import (
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    uuid: str = Field(sa_column_kwargs={"unique": True})
     username: str
     email: str
     password: str
