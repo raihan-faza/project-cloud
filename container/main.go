@@ -62,7 +62,7 @@ func createContainer(container_name string, container_ram int, container_core in
 			PortBindings: portBinding,
 			Resources: container.Resources{
 				NanoCPUs: int64(container_core) * 1e9,
-				Memory:   int64(container_ram) * 1024 * 1024 * 1024,
+				Memory:   int64(container_ram) * 1024 * 1024,
 			},
 			//StorageOpt: map[string]string{
 			//	"size": strconv.Itoa(container_storage) + "G",
