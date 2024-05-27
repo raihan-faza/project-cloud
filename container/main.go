@@ -7,6 +7,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -16,30 +17,33 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func findAvailablePort() (int, error) {
-	// Listen on port 0 to let the OS choose an available port
-	listener, err := net.Listen("tcp", ":0")
+func findAvailablePort() (string, error) {
+	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	defer listener.Close()
 
-	// Get the address of the listener
-	address := listener.Addr().(*net.TCPAddr)
-
-	return address.Port, nil
+	address := listener.Addr().String()
+	parts := strings.Split(address, ":")
+	return parts[len(parts)-1], nil
 }
 
-func createContainer(container_name string, container_ram int, container_core int) (string, error) {
+func createContainer(container_name string, container_ram int, container_core int) (string, string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	hostBinding := nat.PortBinding{HostIP: "0.0.0.0", HostPort: "5000"}
-	containerPort, err := nat.NewPort("tcp", "80")
+	hostPort, err := findAvailablePort()
 	if err != nil {
-		return "", err
+		return "", "", err
+	}
+
+	hostBinding := nat.PortBinding{HostIP: "0.0.0.0", HostPort: hostPort}
+	containerPort, err := nat.NewPort("tcp", "22")
+	if err != nil {
+		return "", "", err
 	}
 
 	portBinding := nat.PortMap{containerPort: []nat.PortBinding{hostBinding}}
@@ -48,11 +52,11 @@ func createContainer(container_name string, container_ram int, container_core in
 		&container.Config{
 			Image: "fedora:latest",
 			ExposedPorts: nat.PortSet{
-				nat.Port("80"): {},
-				"22/tcp":       struct{}{},
+				"22/tcp": struct{}{},
 			},
 			Tty: true,
 			//Cmd: []string{"bash", "-c", "dnf install -y openssh-server && systemctl enable sshd && systemctl start sshd"},
+			Cmd: []string{"sh", "-c", "dnf install -y openssh-server && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && echo 'root:password' | chpasswd && systemctl enable sshd && systemctl start sshd"},
 		},
 		&container.HostConfig{
 			PortBindings: portBinding,
@@ -70,12 +74,12 @@ func createContainer(container_name string, container_ram int, container_core in
 	)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	cli.ContainerStart(context.Background(), cont.ID, container.StartOptions{})
 
-	return cont.ID, err
+	return cont.ID, hostPort, err
 }
 
 func startContainer(cont_id string) (string, error) {
@@ -129,8 +133,8 @@ func main() {
 	db, _ := initializers.ConnectDatabase()
 
 	r.POST("/container/create", func(ctx *gin.Context) {
-		var newContainer models.Container
-		err := ctx.BindJSON(&newContainer)
+		var request request.ContainerCreateRequest
+		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
 				http.StatusBadRequest,
@@ -141,7 +145,7 @@ func main() {
 			return
 		}
 
-		container_id, err := createContainer(newContainer.ContainerName, newContainer.ContainerRam, newContainer.ContainerCore)
+		container_id, hostPort, err := createContainer(request.ContainerName, request.ContainerRam, request.ContainerCore)
 		if err != nil {
 			ctx.JSON(
 				http.StatusBadRequest,
@@ -151,8 +155,16 @@ func main() {
 			)
 			return
 		}
-
-		cont := db.Create(&newContainer)
+		containerData := models.Container{
+			ContainerID:      container_id,
+			ContainerName:    request.ContainerName,
+			ContainerStorage: request.ContainerStorage,
+			ContainerRam:     request.ContainerRam,
+			ContainerCore:    request.ContainerCore,
+			UserID:           request.UserID,
+			UserToken:        request.UserToken,
+		}
+		cont := db.Create(&containerData)
 		if cont.Error != nil {
 			ctx.JSON(
 				http.StatusBadRequest,
@@ -167,6 +179,7 @@ func main() {
 			http.StatusOK,
 			gin.H{
 				"container_Id": container_id,
+				"ssh_port":     hostPort,
 			},
 		)
 	})
