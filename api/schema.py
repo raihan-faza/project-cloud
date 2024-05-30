@@ -16,6 +16,7 @@ class User(SQLModel, table=True):
     email: str
     password: str
     balance: int = 0
+    isverified: bool = False
     def to_safe_dict(self):
         return {key: value for key, value in self.__dict__.items() if key != 'password'}
 
