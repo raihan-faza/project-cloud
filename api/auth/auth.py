@@ -150,7 +150,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         user = User(email=user_info['email'], username=user_info['name'], uuid=uuid)
         db.add(user)
         
-        return JSONResponse(content={"access_token": access_token, "refresh_token": refresh_token, "user":{"name": user_info['name'], "email":user_info['email']}})
+        return JSONResponse(content={"access_token": access_token, "refresh_token": refresh_token, "user":{"name": user_info['name'], "email":user_info['email'], "uuid": uuid}})
     return RedirectResponse(url='/')
 
 @app.post("/register")
