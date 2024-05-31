@@ -50,13 +50,13 @@ func createContainer(container_name string, container_ram int, container_core in
 
 	cont, err := cli.ContainerCreate(context.Background(),
 		&container.Config{
-			Image: "fedora:latest",
+			Image: "ubuntu-ssh:latest",
 			ExposedPorts: nat.PortSet{
 				"22/tcp": struct{}{},
 			},
 			Tty: true,
 			//Cmd: []string{"bash", "-c", "dnf install -y openssh-server && systemctl enable sshd && systemctl start sshd"},
-			Cmd: []string{"sh", "-c", "dnf install -y openssh-server && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && echo 'root:password' | chpasswd && systemctl enable sshd && systemctl start sshd"},
+			//Cmd: []string{"sh", "-c", "dnf install -y openssh-server && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && echo 'root:password' | chpasswd && systemctl enable sshd && systemctl start sshd"},
 		},
 		&container.HostConfig{
 			PortBindings: portBinding,
@@ -78,7 +78,24 @@ func createContainer(container_name string, container_ram int, container_core in
 	}
 
 	cli.ContainerStart(context.Background(), cont.ID, container.StartOptions{})
+	/*
+		execConfig := types.ExecConfig{
+			Cmd:          []string{"bash", "-c", "echo 'root:password' | chpasswd"},
+			AttachStdout: true,
+			AttachStderr: true,
+			Tty:          true,
+		}
 
+		execStartCheck := types.ExecStartCheck{}
+		execID, err := cli.ContainerExecCreate(context.Background(), cont.ID, execConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := cli.ContainerExecStart(context.Background(), execID.ID, execStartCheck); err != nil {
+			log.Fatal(err)
+		}
+	*/
 	return cont.ID, hostPort, err
 }
 
