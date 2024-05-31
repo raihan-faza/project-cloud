@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from fastapi import (
     APIRouter,
     Depends,
@@ -58,13 +59,16 @@ oauth.register(**OAUTH_PROVIDERS["google"])
 
 def get_password_hash(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
 def verify_password(password, hashed_password):
     return bcrypt.checkpw(password.encode(), hashed_password.encode())
+
 def create_access_token(data: dict):
     copy_data = data.copy()
     exp  = datetime.datetime.now() + datetime.timedelta(minutes=15)
     copy_data.update({"exp": exp})
     return jwt.encode(copy_data, SECRET_KEY, algorithm="HS256")
+
 def create_refresh_token(data: dict):
     copy_data = data.copy()
     exp  = datetime.datetime.now() + datetime.timedelta(days=30)
@@ -133,17 +137,20 @@ async def google_login(request: Request):
 
 
 @app.get("/google/callback")
-async def google_callback(request: Request):
+async def google_callback(request: Request, db: Session = Depends(get_db)):
     try:
         token = await oauth.google.authorize_access_token(request)
     except OAuthError as error:
         return {"messages": f"{error.error}"}
     user_info = token['userinfo']
     if user_info:
-        print(user_info)
-        access_token = create_access_token({"email": user_info['email'], "username": user_info['name']})
-        refresh_token = create_refresh_token({"email": user_info['email'], "username": user_info['name']})
-        return JSONResponse(content={"access_token": access_token, "refresh_token": refresh_token, "user":{"name": user_info['name'], "email":user_info['email']}})
+        uuid = str(uuid.uuid4())
+        access_token = create_access_token({"email": user_info['email'], "username": user_info['name'], "uuid": uuid})
+        refresh_token = create_refresh_token({"email": user_info['email'], "username": user_info['name'], "uuid": uuid})
+        user = User(email=user_info['email'], username=user_info['name'], uuid=uuid)
+        db.add(user)
+        
+        return JSONResponse(content={"access_token": access_token, "refresh_token": refresh_token, "user":{"name": user_info['name'], "email":user_info['email'], "uuid": uuid}})
     return RedirectResponse(url='/')
 
 @app.post("/register")
@@ -155,7 +162,9 @@ async def register(user: User, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
     user.password = get_password_hash(user.password)
-    access_token = create_access_token({"email": user.email, "username": user.username, "password": user.password})
+    user.uuid = str(uuid.uuid4())
+    
+    access_token = create_access_token({"email": user.email, "username": user.username, "password": user.password, "uuid": user.uuid})
     send_verification_email(user.email, access_token)
     return {"message": "Check your email for verification!"}
 
@@ -168,8 +177,8 @@ async def login(user: User, db: Session = Depends(get_db)):
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token({"email": db_user.email, "username": db_user.username})
-    refresh_token = create_refresh_token({"email": db_user.email, "username": db_user.username})
+    access_token = create_access_token({"email": db_user.email, "username": db_user.username, "uuid": db_user.uuid})
+    refresh_token = create_refresh_token({"email": db_user.email, "username": db_user.username, "uuid": db_user.uuid})
 
     return JSONResponse(content={"access_token": access_token, "refresh_token": refresh_token, "user":{"name": db_user.username, "email":db_user.email}})
 
@@ -187,15 +196,19 @@ async def verify(token: str, db: Session = Depends(get_db)):
         email = payload.get("email")
         username = payload.get("username")
         password = payload.get("password")
+        uuid = payload.get("uuid")
         if email is None or username is None or password is None:
             raise credentials_exception
-        user = User(email=email, username=username, password=password)
-        access_token = create_access_token({"email": email, "username": username})
-        refresh_token = create_refresh_token({"email": email, "username": username})
+        user = User(email=email, username=username, password=password, uuid=uuid)
+        access_token = create_access_token({"email": email, "username": username, "uuid": uuid})
+        refresh_token = create_refresh_token({"email": email, "username": username, "uuid": uuid})
         db.add(user)
         db.commit()
     except:
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid token"
+        )
     return {"message": "User verified successfully", "access_token": access_token, "refresh_token": refresh_token}
 
 @app.post("/refresh-token")
@@ -208,6 +221,6 @@ async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Incorrect payload"
         )
-    new_access_token = create_access_token({"email": user.email, "username": user.username})
-    new_refresh_token = create_refresh_token({"email": user.email, "username": user.username})
+    new_access_token = create_access_token({"email": user.email, "username": user.username, "uuid": user.uuid})
+    new_refresh_token = create_refresh_token({"email": user.email, "username": user.username, "uuid": user.uuid})
     return {"access_token": new_access_token, "refresh_token": new_refresh_token}
