@@ -2,9 +2,11 @@ package main
 
 import (
 	"api/cloud/initializers"
+	"api/cloud/middleware"
 	"api/cloud/models"
 	"api/cloud/request"
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -140,16 +142,30 @@ func stopContainer(cont_id string) (string, error) {
 	return "container stopped", nil
 }
 
+func updateContainer(cont_id string, new_container_ram int) (string, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return "", err
+	}
+
+	cli.ContainerUpdate(context.Background(), cont_id, container.UpdateConfig{
+		Resources: container.Resources{
+			Memory: int64(new_container_ram) * 1024 * 1024,
+		},
+	})
+
+	message := fmt.Sprintf("container with id %s has been updated", cont_id)
+	return message, err
+}
 func init() {
 	initializers.LoadEnv()
 }
 
 func main() {
 	r := gin.Default()
-
 	db, _ := initializers.ConnectDatabase()
 
-	r.POST("/container/create", func(ctx *gin.Context) {
+	r.POST("/container/create", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerCreateRequest
 		err := ctx.BindJSON(&request)
 		if err != nil {
@@ -201,7 +217,7 @@ func main() {
 		)
 	})
 
-	r.POST("/container/start", func(ctx *gin.Context) {
+	r.POST("/container/start", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerRequest
 		err := ctx.BindJSON(&request)
 		if err != nil {
@@ -231,7 +247,7 @@ func main() {
 		)
 	})
 
-	r.POST("/container/pause", func(ctx *gin.Context) {
+	r.POST("/container/pause", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerRequest
 		err := ctx.BindJSON(&request)
 		if err != nil {
@@ -262,7 +278,7 @@ func main() {
 
 	})
 
-	r.POST("/container/unpause", func(ctx *gin.Context) {
+	r.POST("/container/unpause", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerRequest
 		err := ctx.BindJSON(&request)
 		if err != nil {
@@ -293,7 +309,7 @@ func main() {
 
 	})
 
-	r.POST("/container/stop", func(ctx *gin.Context) {
+	r.POST("/container/stop", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerRequest
 		err := ctx.BindJSON(&request)
 		if err != nil {
@@ -336,7 +352,7 @@ func main() {
 			)
 			return
 		}
-		data := db.Where("container_id= ?", request.UserID).Find(containers)
+		data := db.Where("user_id= ?", request.UserID).Find(&containers)
 		if data.Error != nil {
 			ctx.JSON(
 				http.StatusNotFound,
@@ -350,6 +366,36 @@ func main() {
 			http.StatusOK,
 			gin.H{
 				"data": containers,
+			},
+		)
+	})
+
+	r.POST("container/update", func(ctx *gin.Context) {
+		var request request.ContainerUpdateRequest
+		err := ctx.BindJSON(&request)
+		if err != nil {
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "request error",
+				},
+			)
+			return
+		}
+		message, err := updateContainer(request.ContainerID, request.NewRam)
+		if err != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "Failed to update container",
+				},
+			)
+			return
+		}
+		ctx.JSON(
+			http.StatusOK,
+			gin.H{
+				"message": message,
 			},
 		)
 	})
