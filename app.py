@@ -35,5 +35,29 @@ def get_log_file():
     except FileNotFoundError:
         return jsonify({"error": "Log file does not exist yet."}), 404
 
+@app.route('/log/<container_id>', methods=['GET'])
+def get_log_file_by_container_id(container_id):
+    try:
+        with open("docker_events.log", "r") as log_file:
+            lines = log_file.readlines()
+            # Parse each log entry and filter by container ID
+            log_entries = []
+            for line in lines:
+                parts = line.strip().split(";")
+                if len(parts) == 5:
+                    date, time, container_name, log_container_id, action = parts
+                    if log_container_id == container_id:
+                        log_entry = {
+                            "date": date,
+                            "time": time,
+                            "container_name": container_name,
+                            "container_id": log_container_id,
+                            "action": action
+                        }
+                        log_entries.append(log_entry)
+            return jsonify(log_entries), 200
+    except FileNotFoundError:
+        return jsonify({"error": "Log file does not exist yet."}), 404
+
 if __name__ == '__main__':
     app.run(debug=True)#, host='0.0.0.0')
