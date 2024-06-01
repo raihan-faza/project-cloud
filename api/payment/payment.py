@@ -64,7 +64,6 @@ async def notification(req: Request, db: Session = Depends(get_db)):
             if gross_amount is not None:
                 user.balance += int(round(float(gross_amount)))
                 db.commit()
-    
     # notification = {
     #     "transaction_time": "2021-06-15 18:45:13",
     #     "transaction_status": "settlement",

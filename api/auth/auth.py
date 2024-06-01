@@ -4,7 +4,8 @@ from fastapi import (
     APIRouter,
     Depends,
     Request,
-    HTTPException
+    HTTPException,
+    requests
 )
 from authlib.integrations.starlette_client import (
     OAuth,
@@ -105,10 +106,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         print(e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired"
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"}
         )
-    email = payload.get("email")
-    user = db.query(User).filter(User.email == email).first().to_safe_dict()
+    uuid = payload.get("uuid")
+    user = db.query(User).filter(User.uuid == uuid).first().to_safe_dict()
     if user is None:
         raise credentials_exception
     return user
@@ -191,25 +193,27 @@ credentials_exception = HTTPException(
 
 @app.get("/verify")
 async def verify(token: str, db: Session = Depends(get_db)):
-    try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        email = payload.get("email")
-        username = payload.get("username")
-        password = payload.get("password")
-        uuid = payload.get("uuid")
-        if email is None or username is None or password is None:
-            raise credentials_exception
-        user = User(email=email, username=username, password=password, uuid=uuid)
-        access_token = create_access_token({"email": email, "username": username, "uuid": uuid})
-        refresh_token = create_refresh_token({"email": email, "username": username, "uuid": uuid})
-        db.add(user)
-        db.commit()
-    except:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid token"
-        )
-    return {"message": "User verified successfully", "access_token": access_token, "refresh_token": refresh_token}
+        print(payload)
+        if payload:
+            email = payload.get("email")
+            username = payload.get("username")
+            password = payload.get("password")
+            uuid = payload.get("uuid")
+            if email is None or username is None or password is None:
+                raise credentials_exception
+            user = User(email=email, username=username, password=password, uuid=uuid)
+            
+            access_token = create_access_token({"email": email, "username": username, "uuid": uuid})
+            refresh_token = create_refresh_token({"email": email, "username": username, "uuid": uuid})
+            db.add(user)
+            db.commit()
+            return {"message": "User verified successfully", "access_token": access_token, "refresh_token": refresh_token}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid payload"
+            )
 
 @app.post("/refresh-token")
 async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
@@ -224,3 +228,23 @@ async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     new_access_token = create_access_token({"email": user.email, "username": user.username, "uuid": user.uuid})
     new_refresh_token = create_refresh_token({"email": user.email, "username": user.username, "uuid": user.uuid})
     return {"access_token": new_access_token, "refresh_token": new_refresh_token}
+
+
+@app.get("/profile")
+async def get_profile(current_user: dict = Depends(get_current_user)):
+    if current_user:
+        return {"message": "User found", "user": current_user}
+    else :
+        return {"message": "User not found"}
+
+@app.put("/balance")
+async def update_balance(amount: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user:
+        user = db.query(User).filter(User.uuid == current_user.get("uuid")).first()
+        user.balance -= amount
+        db.commit()
+        if user.balance < 0:
+            requests.post("http://localhost:8000/payment/charge", json={"message":"Your balance is empty","balance": 0})
+            return {"message": "balance updated" }
+        requests.post("http://localhost:8000/payment/charge", json={"message":"Balance updated","balance": abs(user.balance)})
+        return {"message": "balance updated" }

@@ -16,7 +16,6 @@ class User(SQLModel, table=True):
     email: str
     password: str
     balance: int = 0
-    isverified: bool = False
     def to_safe_dict(self):
         return {key: value for key, value in self.__dict__.items() if key != 'password'}
 
@@ -42,7 +41,7 @@ from urllib.parse import quote_plus
 load_dotenv()
 DB_PASS = quote_plus(os.getenv("DB_PASS"))
 
-DB_URL = f"postgresql://postgres:{DB_PASS}@127.0.0.1:5432/postgres"
+DB_URL = f"postgresql://postgres:{DB_PASS}@cloudDB:5432/postgres"
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
