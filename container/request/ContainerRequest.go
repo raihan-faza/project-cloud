@@ -9,12 +9,10 @@ type ContainerListRequest struct {
 }
 
 type ContainerCreateRequest struct {
-	ContainerName    string
-	ContainerStorage int
-	ContainerRam     int
-	ContainerCore    int
-	UserID           int
-	UserToken        string
+	ContainerName string
+	ContainerRam  int
+	ContainerCore int
+	UserID        int
 }
 
 type ContainerUpdateRequest struct {

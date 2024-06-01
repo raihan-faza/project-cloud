@@ -189,13 +189,11 @@ func main() {
 			return
 		}
 		containerData := models.Container{
-			ContainerID:      container_id,
-			ContainerName:    request.ContainerName,
-			ContainerStorage: request.ContainerStorage,
-			ContainerRam:     request.ContainerRam,
-			ContainerCore:    request.ContainerCore,
-			UserID:           request.UserID,
-			UserToken:        request.UserToken,
+			ContainerID:   container_id,
+			ContainerName: request.ContainerName,
+			ContainerRam:  request.ContainerRam,
+			ContainerCore: request.ContainerCore,
+			UserID:        request.UserID,
 		}
 		cont := db.Create(&containerData)
 		if cont.Error != nil {
