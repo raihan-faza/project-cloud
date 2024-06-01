@@ -46,11 +46,12 @@ def recharge(request):
             gross_amount = request.POST.get('gross_amount')
             headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {request.session["access_token"]}'}
             body = {'gross_amount': gross_amount}
-            response = requests.post('http://localhost:4000/charge', headers=headers, json=body)
+            response = requests.post('http://localhost:4000/payment/charge', headers=headers, json=body)
             data = response.json()
             if 'message' in data:
-                messages.success(request, data['message'])
-                return redirect('index')
+                messages.success(request, data['data'].get('actions')[1].get('url'))
+                # print(data['data'].get('actions')[1].get('url'))
+                return redirect(data['data'].get('actions')[1].get('url'))
     return render(request, 'recharge.html')
 
 def logout(request):
