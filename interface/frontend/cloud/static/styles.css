@@ -1,0 +1,22 @@
+body {
+    transition: background-color 0.5s, color 0.5s;
+}
+
+.bg-dark-green {
+    background-color: #2e7d32 !important;
+}
+
+.sidebar {
+    width: 250px;
+    height: 100vh;
+}
+
+.btn-light {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.btn-dark {
+    background-color: #000000;
+    color: #ffffff;
+}
