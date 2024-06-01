@@ -37,11 +37,9 @@ class Billing(SQLModel, table=True):
     total: int
 
 
-from urllib.parse import quote_plus
-load_dotenv()
-DB_PASS = quote_plus(os.getenv("DB_PASS"))
 
-DB_URL = f"postgresql://postgres:{DB_PASS}@cloudDB:5432/postgres"
+load_dotenv()
+DB_URL = os.getenv("DB_URL")
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
