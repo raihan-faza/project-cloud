@@ -16,3 +16,8 @@ type ContainerCreateRequest struct {
 	UserID           int
 	UserToken        string
 }
+
+type ContainerUpdateRequest struct {
+	ContainerID string
+	NewRam      int
+}
