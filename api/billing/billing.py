@@ -1,54 +1,53 @@
 import docker
+from dotenv import load_dotenv
+from fastapi import Depends, Request, HTTPException
+from requests import Session
+from sqlmodel import select
+from schema import Container, Billing, get_db
+from fastapi.routing import APIRouter
 from datetime import datetime, timedelta
-import time
 
-# Constants for billing rates (example rates)
-RATE_PER_MINUTE = 100  # Rate per hour of uptime in dollars
+load_dotenv()
 
-# Create a Docker client
+app = APIRouter()
 client = docker.from_env()
 
-# Function to calculate billing
-def calculate_billing(uptime_seconds, rate):
-    uptime = uptime_seconds // 60 + 1
 
-    total_cost = uptime * rate
+@app.get("/billing")
+async def get_billing(req: Request, db: Session = Depends(get_db)):
+    data = await req.json()
+    if not data:
+        raise HTTPException(status_code=404, detail="No actions found for this container")
+    
+    container_id = data.get("container_id")
+    actions = data.get("actions")
 
-    return total_cost
+    container = db.exec(select(Container).where(Container.id == container_id)).first()
+    if not container:
+        raise HTTPException(status_code=404, detail="Container not found")
 
-# Function to monitor and calculate billing for a container
-def monitor_container(container_id, uptime, rate):
-    try:
-        container = client.containers.get(container_id)
+    total_uptime = timedelta()
+    last_unpause_time = None
 
-        # Calculate billing
-        cost = calculate_billing(uptime, rate)
+    for action in actions:
+        if action.action == "unpause":
+            last_unpause_time = action.timestamp
+        elif action.action == "pause" and last_unpause_time:
+            total_uptime += action.timestamp - last_unpause_time
+            last_unpause_time = None
 
-        # Print or log the billing information
-        print(f"Container ID: {container.id}")
-        print(f"Status: {container.status}")
-        print(f"Uptime: {uptime} seconds")
-        print(f"Current Billing Cost: Rp.{cost}")
+    if last_unpause_time:
+        total_uptime += datetime.now() - last_unpause_time
 
-    except docker.errors.NotFound:
-        print(f'Container {container_id} not found')
-    except docker.errors.APIError as e:
-        print(f'Error: {e}')
+    total_minutes = total_uptime.total_seconds() // 60 + 1
+    total_cost = int(total_minutes * container.price)
+
+    billing = Billing(user_id=container.user_id, total=total_cost)
+    db.add(billing)
+    db.commit()
+
+    return {"total_uptime_minutes": total_minutes, "total_cost": total_cost}
 
 if __name__ == "__main__":
-    # Example usage
-    image_name = "nginx"
-    container_name = "my_nginx"
-    ports = {'80/tcp': 8080}
-    
-    # Run container
-    container = client.containers.run(image_name, name=container_name, ports=ports, detach=True)
-    print(f'Container {container.id} started')
-
-    # Start monitoring the container in a separate thread
-    import threading
-    monitor_thread = threading.Thread(target=monitor_container, args=(container.id, 100, RATE_PER_MINUTE))
-    monitor_thread.start()
-
-    # Wait for the monitor thread to finish
-    monitor_thread.join()
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
