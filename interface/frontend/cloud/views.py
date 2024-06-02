@@ -182,3 +182,9 @@ def edit_container_view(request):
     else:
         success = edit_container(ContainerID, NewRam, request.session['access_token'])
         return redirect('index')
+    
+def profile(request):
+    if 'user' in request.session:
+        return render(request, 'account.html', {'user': request.session['user']})
+    else:
+        return redirect('login')
