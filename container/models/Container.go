@@ -10,4 +10,6 @@ type Container struct {
 	ContainerCore int
 	UserID        string
 	ContainerPort string
+	IsPaused      bool
+	IsStopped     bool
 }
