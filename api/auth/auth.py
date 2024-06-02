@@ -37,6 +37,7 @@ from fastapi.security import OAuth2PasswordBearer
 load_dotenv()
 app = APIRouter()
 SECRET_KEY = os.getenv("SECRET_KEY")
+API_URL = os.getenv("API_URL")
 REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY")
 
 OAUTH_PROVIDERS = {
@@ -80,7 +81,7 @@ def create_refresh_token(data: dict):
 def send_verification_email(email: str, token: str):
     mail_content = f'''
     Please click on the link to verify your account:
-    http://localhost:8000/verify?token={token}
+    http://{API_URL}/verify?token={token}
     '''
     
 
@@ -245,7 +246,7 @@ async def update_balance(amount: int, current_user: dict = Depends(get_current_u
         user.balance -= amount
         db.commit()
         if user.balance < 0:
-            requests.post("http://localhost:8000/payment/charge", json={"message":"Your balance is empty","balance": 0})
+            requests.post(f"http://{API_URL}/payment/charge", json={"message":"Your balance is empty","balance": 0})
             return {"message": "balance updated" }
-        requests.post("http://localhost:8000/payment/charge", json={"message":"Balance updated","balance": abs(user.balance)})
+        requests.post(f"http://{API_URL}/payment/charge", json={"message":"Balance updated","balance": abs(user.balance)})
         return {"message": "balance updated" }

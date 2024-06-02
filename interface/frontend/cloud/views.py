@@ -1,11 +1,13 @@
+import os
 from django.shortcuts import redirect, render
 import requests
 from django.contrib import messages
 # Create your views here.
+API_URL = os.getenv("API_URL")
 
 def refresh_token(request):
     headers = {'Content-Type': 'application/json'}
-    response = requests.post('http://localhost:4000/refresh-token', headers=headers, json={'refresh_token': request.session['refresh_token']})
+    response = requests.post(f'http://{API_URL}/refresh-token', headers=headers, json={'refresh_token': request.session['refresh_token']})
     if response.status_code != 200:
         return False
     data = response.json()
@@ -45,7 +47,7 @@ def login(request):
             email = request.POST.get('email')
             password = request.POST.get('password')
             headers = {'Content-Type': 'application/json'}
-            response = requests.post('http://localhost:4000/login', headers=headers, json={'email': email, 'password': password})
+            response = requests.post(f'http://{API_URL}/login', headers=headers, json={'email': email, 'password': password})
             data = response.json()
             if 'access_token' in data and 'refresh_token' in data:
                 request.session['access_token'] = data['access_token']
@@ -66,7 +68,7 @@ def register(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         headers = {'Content-Type': 'application/json'}
-        response = requests.post('http://localhost:4000/register', headers=headers, json={'email': email, 'username': username, 'password': password})
+        response = requests.post(f'http://{API_URL}/register', headers=headers, json={'email': email, 'username': username, 'password': password})
         data = response.json()
         if 'message' in data:
             messages.success(request, data['message'])
@@ -81,7 +83,7 @@ def recharge(request):
             gross_amount = request.POST.get('gross_amount')
             headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {request.session["access_token"]}'}
             body = {'gross_amount': gross_amount}
-            response = requests.post('http://localhost:4000/payment/charge', headers=headers, json=body)
+            response = requests.post(f'http://{API_URL}/payment/charge', headers=headers, json=body)
             data = response.json()
             if 'message' in data:
                 messages.success(request, data['data'].get('actions')[1].get('url'))
