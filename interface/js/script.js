@@ -29,3 +29,8 @@ function isLight(){
 if(isLight()){
     toggleRootClass();
 }
+
+function playChangeButton(x) {
+    x.classList.toggle("bi bi-play-fill");
+    x.classList.toggle("bi bi-pause-fill");
+}
