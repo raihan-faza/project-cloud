@@ -8,6 +8,7 @@ from sqlmodel import (
     Session,
     create_engine,
 )
+from datetime import datetime
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -31,15 +32,22 @@ class Container(SQLModel, table=True):
     price: int
 
 
+class Action(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    container_id: str
+    action: str
+    timestamp: datetime
+
+
 class Billing(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int | None = Field(default=None, foreign_key='user.id')
+    container_id: str
     total: int
 
 
-
 load_dotenv()
-DB_URL = os.getenv("DB_URL")
+DB_URL =  os.getenv("DB_URL")
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
