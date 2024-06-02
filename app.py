@@ -20,7 +20,7 @@ def token_required(f):
         except Exception as e:
             return jsonify({'message': 'Token is invalid!'}), 403
         print(data)
-        return f(data['UserID'], *args, **kwargs)
+        return f(data['uuid'], *args, **kwargs)
     return decorated
 
 # @app.route('/events', methods=['GET'])
