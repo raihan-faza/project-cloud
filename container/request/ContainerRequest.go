@@ -4,15 +4,11 @@ type ContainerRequest struct {
 	ContainerID string
 }
 
-type ContainerListRequest struct {
-	UserID int
-}
-
 type ContainerCreateRequest struct {
-	ContainerName string
-	ContainerRam  int
-	ContainerCore int
-	UserID        int
+	ContainerName     string
+	ContainerRam      int
+	ContainerCore     int
+	ContainerPassword string
 }
 
 type ContainerUpdateRequest struct {
