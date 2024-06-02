@@ -5,12 +5,15 @@ import (
 	"api/cloud/middleware"
 	"api/cloud/models"
 	"api/cloud/request"
+	"api/cloud/validator"
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strings"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
@@ -32,7 +35,11 @@ func findAvailablePort() (string, error) {
 	return parts[len(parts)-1], nil
 }
 
-func createContainer(container_name string, container_ram int, container_core int) (string, string, error) {
+func createContainer(container_name string, container_ram int, container_core int, container_password string) (string, string, error) {
+	container_name_filter := validator.ValidateName(container_name)
+	if !container_name_filter {
+		return "", "", fmt.Errorf("bad container name")
+	}
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return "", "", err
@@ -58,8 +65,6 @@ func createContainer(container_name string, container_ram int, container_core in
 				"22/tcp": struct{}{},
 			},
 			Tty: true,
-			//Cmd: []string{"bash", "-c", "dnf install -y openssh-server && systemctl enable sshd && systemctl start sshd"},
-			//Cmd: []string{"sh", "-c", "dnf install -y openssh-server && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && echo 'root:password' | chpasswd && systemctl enable sshd && systemctl start sshd"},
 		},
 		&container.HostConfig{
 			PortBindings: portBinding,
@@ -67,9 +72,6 @@ func createContainer(container_name string, container_ram int, container_core in
 				NanoCPUs: int64(container_core) * 1e9,
 				Memory:   int64(container_ram) * 1024 * 1024,
 			},
-			//StorageOpt: map[string]string{
-			//	"size": strconv.Itoa(container_storage) + "G",
-			//},
 		},
 		&network.NetworkingConfig{},
 		&v1.Platform{},
@@ -81,24 +83,22 @@ func createContainer(container_name string, container_ram int, container_core in
 	}
 
 	cli.ContainerStart(context.Background(), cont.ID, container.StartOptions{})
-	/*
-		execConfig := types.ExecConfig{
-			Cmd:          []string{"bash", "-c", "echo 'root:password' | chpasswd"},
-			AttachStdout: true,
-			AttachStderr: true,
-			Tty:          true,
-		}
+	execConfig := types.ExecConfig{
+		Cmd:          []string{"sh", "-c", fmt.Sprintf("echo 'root:%s' | chpasswd", container_password)},
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+	}
 
-		execStartCheck := types.ExecStartCheck{}
-		execID, err := cli.ContainerExecCreate(context.Background(), cont.ID, execConfig)
-		if err != nil {
-			log.Fatal(err)
-		}
+	execStartCheck := types.ExecStartCheck{}
+	execID, err := cli.ContainerExecCreate(context.Background(), cont.ID, execConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		if err := cli.ContainerExecStart(context.Background(), execID.ID, execStartCheck); err != nil {
-			log.Fatal(err)
-		}
-	*/
+	if err := cli.ContainerExecStart(context.Background(), execID.ID, execStartCheck); err != nil {
+		log.Fatal(err)
+	}
 	return cont.ID, hostPort, err
 }
 
@@ -194,7 +194,7 @@ func main() {
 			return
 		}
 
-		container_id, hostPort, err := createContainer(request.ContainerName, request.ContainerRam, request.ContainerCore)
+		container_id, hostPort, err := createContainer(request.ContainerName, request.ContainerRam, request.ContainerCore, request.ContainerPassword)
 		if err != nil {
 			ctx.JSON(
 				http.StatusBadRequest,

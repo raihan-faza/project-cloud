@@ -5,9 +5,10 @@ type ContainerRequest struct {
 }
 
 type ContainerCreateRequest struct {
-	ContainerName string
-	ContainerRam  int
-	ContainerCore int
+	ContainerName     string
+	ContainerRam      int
+	ContainerCore     int
+	ContainerPassword string
 }
 
 type ContainerUpdateRequest struct {
