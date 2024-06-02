@@ -1,5 +1,5 @@
-from flask import Flask, jsonify, send_file
-from docker_events import log_event
+from flask import Flask, jsonify, request, send_file
+# from docker_events import log_event
 
 app = Flask(__name__)
 

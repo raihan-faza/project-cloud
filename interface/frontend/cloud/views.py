@@ -18,7 +18,17 @@ def refresh_token(request):
 
 def index(request):
     if 'user' in request.session:
-        return render(request, 'index.html', {'user': request.session['user']})
+        try:
+            container_list = requests.get('http://103.181.182.243:8080/container/list/', headers={'Authorization': f'Bearer {request.session["access_token"]}'})
+            if container_list.status_code == 200:
+                data = container_list.json()
+                print(data)
+                return render(request, 'index.html', {'user': request.session['user'], 'containers': data})
+            else:
+                return render(request, 'index.html', {'user': request.session['user']})
+        except Exception as e:
+            print(e)
+            return render(request, 'index.html', {'user': request.session['user']})
     else:
         if 'refresh_token' in request.session:
             is_refreshed = refresh_token(request)
@@ -26,21 +36,27 @@ def index(request):
                 return render(request, 'index.html', {'user': request.session['user']})
             else:
                 return redirect('login')
+        return redirect('login')
+            
     
 def login(request):
     if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        headers = {'Content-Type': 'application/json'}
-        response = requests.post('http://localhost:4000/login', headers=headers, json={'email': email, 'password': password})
-        data = response.json()
-        if 'access_token' in data and 'refresh_token' in data:
-            request.session['access_token'] = data['access_token']
-            request.session['refresh_token'] = data['refresh_token']
-            request.session['user'] = data['user']
-            print(request.session['user'])
-            return redirect('index')
-        else:
+        try:
+            email = request.POST.get('email')
+            password = request.POST.get('password')
+            headers = {'Content-Type': 'application/json'}
+            response = requests.post('http://localhost:4000/login', headers=headers, json={'email': email, 'password': password})
+            data = response.json()
+            if 'access_token' in data and 'refresh_token' in data:
+                request.session['access_token'] = data['access_token']
+                request.session['refresh_token'] = data['refresh_token']
+                request.session['user'] = data['user']
+                print(request.session['user'])
+                return redirect('index')
+            else:
+                return render(request, 'login.html', {'error': 'Invalid credentials'})
+        except Exception as e:
+            print(e)
             return render(request, 'login.html', {'error': 'Invalid credentials'})
     return render(request, 'login.html')
 
@@ -110,3 +126,62 @@ def create_container(request):
                 print(response.json())
                 return redirect('index')
     return redirect('index')
+
+# views.py
+from .api import delete_container, pause_container, stop_container, unpause_container
+
+def delete_container_view(request):
+    container_id = request.POST.get('container_Id')    
+    if 'access_token' not in request.session:
+        messages.error(request, 'You must be logged in to delete a container')
+        return redirect('login')
+    else:
+        success = delete_container(container_id, request.session['access_token'])
+        if success:
+            messages.success(request, 'Container deleted successfully')
+        else:
+            messages.error(request, 'Failed to delete container')
+        return redirect('index')
+
+def stop_container_view(request):
+    container_id = request.POST.get('container_Id')    
+    if 'access_token' not in request.session:
+        messages.error(request, 'You must be logged in to delete a container')
+        return redirect('login')
+    else:
+        success = stop_container(container_id, request.session['access_token'])
+        if success:
+            messages.success(request, 'Container deleted successfully')
+        else:
+            messages.error(request, 'Failed to delete container')
+        data = {}
+        return render(request, 'index.html', data)
+    
+def pause_container_view(request):
+    container_id = request.POST.get('container_Id')    
+    if 'access_token' not in request.session:
+        messages.error(request, 'You must be logged in to pause a container')
+        return redirect('login')
+    else:
+        success = pause_container(container_id, request.session['access_token'])
+        if success:
+            messages.success(request, 'Container paused successfully')
+        else:
+            messages.error(request, 'Failed to pause container')
+        data = {}
+        return render(request, 'index.html', data)
+
+def unpause_container_view(request):
+    container_id = request.POST.get('container_Id')    
+    if 'access_token' not in request.session:
+        messages.error(request, 'You must be logged in to unpause a container')
+        return redirect('login')
+    else:
+        success = unpause_container(container_id, request.session['access_token'])
+        if success:
+            messages.success(request, 'Container unpaused successfully')
+        else:
+            messages.error(request, 'Failed to unpause container')
+        data = {}
+        return render(request, 'index.html', data)
+    
