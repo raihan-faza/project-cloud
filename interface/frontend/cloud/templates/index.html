@@ -1,14 +1,14 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
-
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bootstrap Admin Dashboard</title>
+    <title> {{ user.name }} Dashboard</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/css/bootstrap.min.css">
     <script src="https://kit.fontawesome.com/ae360af17e.js" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="{% static 'style.css'%}">
 </head>
 
 <body>
@@ -17,26 +17,26 @@
             <!-- Content For Sidebar -->
             <div class="h-100">
                 <div class="sidebar-logo">
-                    <a href="index.html">El Ducka</a>
+                    <a href="">El Ducka</a>
                 </div>
                 <ul class="sidebar-nav">
                     <li class="sidebar-header">
                         Admin Elements
                     </li>
                     <li class="sidebar-item">
-                        <a href="index.html" class="sidebar-link">
+                        <a href="" class="sidebar-link">
                             <i class="fa-solid fa-list pe-2"></i>
                             Dashboard
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a href="recharge.html" class="sidebar-link collapsed" data-bs-target="#posts"
+                        <a href="recharge" class="sidebar-link collapsed" data-bs-target="#posts"
                             aria-expanded="false"><i class="fa-solid fa-list pe-2"></i>
                             Top Up
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a href="account.html" class="sidebar-link collapsed" data-bs-target="#auth"
+                        <a href="#" class="sidebar-link collapsed" data-bs-target="#auth"
                             aria-expanded="false"><i class="fa-regular fa-user pe-2"></i>
                             Profile
                         </a>
@@ -53,11 +53,11 @@
                     <ul class="navbar-nav">
                         <li class="nav-item dropdown">
                             <a href="#" data-bs-toggle="dropdown" class="nav-icon pe-md-0">
-                                <img src="image/profile.jpg" class="avatar img-fluid rounded" alt="">
+                                <img src="{% static 'image/profile.jpg'%}" class="avatar img-fluid rounded" alt="">
                             </a>
                             <div class="dropdown-menu dropdown-menu-end">
-                                <a href="account.html" class="dropdown-item">Profile</a>
-                                <a href="login.html" class="dropdown-item">Logout</a>
+                                <a href="#" class="dropdown-item">Profile</a>
+                                <a href="{% url 'logout'%}" class="dropdown-item">Logout</a>
                             </div>
                         </li>
                     </ul>
@@ -66,7 +66,7 @@
             <main class="content px-3 py-2">
                 <div class="container-fluid">
                     <div class="mb-3">
-                        <h4>Admin Dashboard</h4>
+                        <h4> {{user.name}} Dashboard</h4>
                     </div>
                     <div class="row">
                         <div class="col-12 col-md-6 d-flex">
@@ -75,12 +75,12 @@
                                     <div class="row g-0 w-100">
                                         <div class="col-6">
                                             <div class="p-3 m-1">
-                                                <h4>Welcome Back, User!</h4>
-                                                <p class="mb-0">El Ducka, Lahh 4.0</p>
+                                                <h4>Welcome Back, {{user.name}}!</h4>
+                                                <p class="mb-0">{{user.name}}, Lahh 4.0</p>
                                             </div>
                                         </div>
                                         <div class="col-6 align-self-end text-end">
-                                            <img src="image/customer-support.jpg" class="img-fluid illustration-img"
+                                            <img src="{% static 'image/customer-support.jpg'%}" class="img-fluid illustration-img"
                                                 alt="">
                                         </div>
                                     </div>
@@ -93,13 +93,13 @@
                                     <div class="d-flex align-items-start">
                                         <div class="flex-grow-1">
                                             <h4 class="mb-2">
-                                                $ 78.00
+                                                Rp {{user.balance}}
                                             </h4>
                                             <p class="mb-2">
                                                 Current Balance
                                             </p>
                                             <div class="mb-0">
-                                                <a href="recharge.html" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center" onclick="">Gimme Moar!</a>
+                                                <a href="{% url 'recharge'%}" class="btn btn-sm btn-gray-800 d-inline-flex align-items-center btn-outline-secondary" onclick="">Gimme Moar!</a>
                                             </div>
                                         </div>
                                     </div>
@@ -112,7 +112,7 @@
                         <div class="card-body">
                             <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
                                 <h4 class="card-subtitle text-muted">
-                                    Your Containers
+                                    Yer containers will be shown here, yeah!
                                 </h4>
                                 <div class="btn-toolbar mb-2 mb-md-0">
                                     <a class="btn btn-sm btn-gray-800 d-inline-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addItemModal">
@@ -127,8 +127,6 @@
                                     <tr>
                                         <th class="border-bottom" scope="col">Name</th>
                                         <th class="border-bottom" scope="col">Image</th>
-                                        <th class="border-bottom" scope="col">RAM</th>
-                                        <th class="border-bottom" scope="col">Core</th>
                                         <th class="border-bottom" scope="col">Usage Time</th>
                                         <th class="border-bottom" scope="col">Last Started</th>
                                         <th class="border-bottom" scope="col">Actions</th>
@@ -142,7 +140,7 @@
                             <div class="card-header">
                                 <div class="row align-items-center">
                                     <h4 class="card-subtitle text-muted">
-                                        Activity Logs
+                                        Ya should track yer logs
                                     </h4>
                                 </div>
                             </div>
@@ -203,35 +201,8 @@
                             <input type="text" class="form-control" id="containerName" required>
                         </div>
                         <div class="mb-3">
-                            <label for="RAM">RAM</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="flexRadioDefault" id="RAM">
-                                <label class="form-check-label" for="flexRadioDefault1">
-                                    256 GB
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="flexRadioDefault" id="RAM">
-                                <label class="form-check-label" for="flexRadioDefault1">
-                                    512 GB
-                                </label>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-
-                            <label for="Core">Core</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="flexRadioDefault" id="Core">
-                                <label class="form-check-label" for="flexRadioDefault1">
-                                    Single
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="flexRadioDefault" id="Core">
-                                <label class="form-check-label" for="flexRadioDefault1">
-                                    Double
-                                </label>
-                            </div>
+                            <label for="image" class="form-label">Image</label>
+                            <input type="text" class="form-control" id="image" required>
                         </div>
                         <button type="submit" class="btn btn-primary">Add</button>
                     </form>
@@ -241,7 +212,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/script.js"></script>
+    <script src="{% static 'script.js'%}"></script>
 </body>
 
 </html>
