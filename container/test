@@ -1,0 +1,99 @@
+package main
+
+import (
+	"api/cloud/validator"
+	"context"
+	"fmt"
+	"net"
+	"strings"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+)
+
+func testfindAvailablePort() (string, error) {
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return "", err
+	}
+	defer listener.Close()
+
+	address := listener.Addr().String()
+	parts := strings.Split(address, ":")
+	return parts[len(parts)-1], nil
+}
+
+func testcreateContainer(container_name string, container_ram int, container_core int, container_password string) (string, string, error) {
+	container_name_filter := validator.ValidateName(container_name)
+	if !container_name_filter {
+		return "", "", fmt.Errorf("bad container name")
+	}
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return "", "", err
+	}
+
+	hostPort, err := testfindAvailablePort()
+	if err != nil {
+		return "", "", err
+	}
+
+	hostBinding := nat.PortBinding{HostIP: "0.0.0.0", HostPort: hostPort}
+	containerPort, err := nat.NewPort("tcp", "22")
+	if err != nil {
+		return "", "", err
+	}
+
+	portBinding := nat.PortMap{containerPort: []nat.PortBinding{hostBinding}}
+
+	cont, err := cli.ContainerCreate(context.Background(),
+		&container.Config{
+			Image: "ubuntu-ssh-custom:latest",
+			ExposedPorts: nat.PortSet{
+				"22/tcp": struct{}{},
+			},
+			Tty: true,
+		},
+		&container.HostConfig{
+			PortBindings: portBinding,
+			Resources: container.Resources{
+				NanoCPUs: int64(container_core) * 1e9,
+				Memory:   int64(container_ram) * 1024 * 1024,
+			},
+		},
+		&network.NetworkingConfig{},
+		&v1.Platform{},
+		container_name,
+	)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	cli.ContainerStart(context.Background(), cont.ID, container.StartOptions{})
+	execConfig := types.ExecConfig{
+		Cmd:          []string{"sh", "-c", fmt.Sprintf("echo 'root:%s' | chpasswd", container_password)},
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+	}
+
+	execStartCheck := types.ExecStartCheck{}
+	execID, err := cli.ContainerExecCreate(context.Background(), cont.ID, execConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := cli.ContainerExecStart(context.Background(), execID.ID, execStartCheck); err != nil {
+		panic(err)
+	}
+	return cont.ID, hostPort, err
+}
+
+func main() {
+	testcreateContainer("test-custom", 256, 1, "hello")
+}

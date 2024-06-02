@@ -12,9 +12,6 @@ RUN apt-get update && \
 # Create the necessary directory for the SSH daemon
 RUN mkdir /var/run/sshd
 
-# Enable root login with password (not recommended for production)
-RUN echo 'root:root' | chpasswd
-
 # Allow SSH root login by modifying the sshd_config
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 

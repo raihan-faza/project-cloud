@@ -8,5 +8,5 @@ type Container struct {
 	ContainerName string
 	ContainerRam  int
 	ContainerCore int
-	UserID        int
+	UserID        string
 }
