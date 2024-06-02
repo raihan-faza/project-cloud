@@ -6,14 +6,14 @@ import threading
 client = docker.from_env()
 
 # Function to log events
-def log_event(event):
+def log_event(event, user_id):
     event_time = datetime.datetime.fromtimestamp(event['time'])
     event_date = event_time.strftime('%Y-%m-%d')
     event_time = event_time.strftime('%H:%M:%S')
     event_action = event['Action']
     event_container_name = event['Actor']['Attributes'].get('name', 'unknown')
     event_container_id = event['Actor']['ID']
-    log_message = f"{event_date};{event_time};{event_container_name};{event_container_id};{event_action}"
+    log_message = f"{event_date};{user_id};{event_time};{event_container_name};{event_container_id};{event_action}"
     print(log_message)
     with open("docker_events.log", "a") as log_file:
         log_file.write(log_message + "\n")
@@ -31,15 +31,19 @@ def check_log_file():
 # check_log_file()
 
 # Function to listen for Docker events
-def listen_to_events():
-    for event in client.events(decode=True):
-        if event['Type'] == 'container' and event['Action'] in ['create', 'start', 'pause', 'unpause', 'stop', 'destroy', 'die']:
-            log_event(event)
+# def listen_to_events():
+#     for event in client.events(decode=True):
+#         if event['Type'] == 'container' and event['Action'] in ['create', 'start', 'pause', 'unpause', 'stop', 'destroy', 'die']:
+#             log_event(event)
 
 # Listen for Docker events
 # for event in client.events(decode=True):
 #     if event['Type'] == 'container' and event['Action'] in ['create', 'start', 'pause', 'unpause', 'stop', 'destroy', 'die']:
 #         log_event(event)
+def handle_docker_events(user_id):
+    for event in client.events(decode=True):
+        if event['Type'] == 'container' and event['Action'] in ['create', 'start', 'pause', 'unpause', 'stop', 'destroy', 'die']:
+            log_event(event, user_id)
 
 # Start the event listener in a separate thread
 # event_listener_thread = threading.Thread(target=listen_to_events, daemon=True)
