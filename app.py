@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from docker_events import log_event
+from docker_events import log_event, handle_docker_events
 import jwt
 from functools import wraps
 
@@ -19,9 +19,10 @@ def token_required(f):
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         except Exception as e:
             return jsonify({'message': 'Token is invalid!'}), 403
-        return f(data['user_id'], *args, **kwargs)
+        print(data)
+        return f(data['uuid'], *args, **kwargs)
     return decorated
-    
+
 # @app.route('/events', methods=['GET'])
 # def get_events():
 #     try:
@@ -32,17 +33,15 @@ def token_required(f):
 #         return jsonify({"error": "Log file does not exist yet."}), 404
 
 @app.route('/events', methods=['POST'])
-def start_events():
+@token_required
+def start_events(user_id):
     data = request.get_json()
-    user_id = data.get('user_id')
-    if not user_id:
-        return jsonify({"error": "User ID is required"}), 400
-    
-    docker_events.start_event_logging(user_id)
+    docker_events.handle_docker_events(user_id)
     return jsonify({"status": "Event logging started", "user_id": user_id}), 200
 
 @app.route('/log', methods=['GET'])
-def get_log_file():
+@token_required
+def get_log_file(user_id):
     try:
         with open("docker_events.log", "r") as log_file:
             lines = log_file.readlines()
@@ -51,11 +50,11 @@ def get_log_file():
             for line in lines:
                 parts = line.strip().split(";")
                 if len(parts) == 6:
-                    date, time, user_id, container_name, container_id, action = parts
+                    date, time, log_user_id, container_name, container_id, action = parts
                     log_entry = {
                         "date": date,
                         "time": time,
-                        "user_id":user_id,
+                        "user_id":log_user_id,
                         "container_name": container_name,
                         "container_id": container_id,
                         "action": action
@@ -66,25 +65,25 @@ def get_log_file():
         return jsonify({"error": "Log file does not exist yet."}), 404
 
 @app.route('/log', methods=['POST'])
-def get_log_file_by_container_id():
+@token_required
+def get_log_file_by_container_id_post(user_id):
+    data = request.get_json()
+    container_id = data.get('container_id')
+    if not container_id:
+        return jsonify({"error": "Container ID is required"}), 400
     try:
-        data = request.get_json()
-        container_id = data.get('container_id')
-        if not container_id:
-            return jsonify({"error": "Container ID is required"}), 400
-
         with open("docker_events.log", "r") as log_file:
             lines = log_file.readlines()
-            # Parse each log entry and filter by container ID
             log_entries = []
             for line in lines:
                 parts = line.strip().split(";")
-                if len(parts) == 5:
-                    date, time, container_name, log_container_id, action = parts
+                if len(parts) == 6:  # Including user_id
+                    date, time, log_user_id, container_name, log_container_id, action = parts
                     if log_container_id == container_id:
                         log_entry = {
                             "date": date,
                             "time": time,
+                            "user_id": log_user_id,
                             "container_name": container_name,
                             "container_id": log_container_id,
                             "action": action
@@ -95,7 +94,8 @@ def get_log_file_by_container_id():
         return jsonify({"error": "Log file does not exist yet."}), 404
 
 @app.route('/log/<container_id>', methods=['GET'])
-def get_log_file_by_container_id(container_id):
+@token_required
+def get_log_file_by_container_id(user_id, container_id):
     try:
         with open("docker_events.log", "r") as log_file:
             lines = log_file.readlines()
@@ -103,12 +103,12 @@ def get_log_file_by_container_id(container_id):
             for line in lines:
                 parts = line.strip().split(";")
                 if len(parts) == 6:  # Including user_id
-                    date, time, user_id, container_name, log_container_id, action = parts
+                    date, time, log_user_id, container_name, log_container_id, action = parts
                     if log_container_id == container_id:
                         log_entry = {
                             "date": date,
                             "time": time,
-                            "user_id": user_id,
+                            "user_id": log_user_id,
                             "container_name": container_name,
                             "container_id": log_container_id,
                             "action": action

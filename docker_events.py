@@ -13,7 +13,7 @@ def log_event(event, user_id):
     event_action = event['Action']
     event_container_name = event['Actor']['Attributes'].get('name', 'unknown')
     event_container_id = event['Actor']['ID']
-    log_message = f"{event_date};{user_id};{event_time};{event_container_name};{event_container_id};{event_action}"
+    log_message = f"{event_date};{event_time};{user_id};{event_container_name};{event_container_id};{event_action}"
     print(log_message)
     with open("docker_events.log", "a") as log_file:
         log_file.write(log_message + "\n")

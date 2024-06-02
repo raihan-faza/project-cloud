@@ -67,7 +67,7 @@ def verify_password(password, hashed_password):
 
 def create_access_token(data: dict):
     copy_data = data.copy()
-    exp  = datetime.datetime.now() + datetime.timedelta(minutes=15)
+    exp  = datetime.datetime.now() + datetime.timedelta(hours=24)
     copy_data.update({"exp": exp})
     return jwt.encode(copy_data, SECRET_KEY, algorithm="HS256")
 
