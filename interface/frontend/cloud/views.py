@@ -1,14 +1,31 @@
-from http.client import HTTPResponse
 from django.shortcuts import redirect, render
 import requests
 from django.contrib import messages
 # Create your views here.
+
+def refresh_token(request):
+    headers = {'Content-Type': 'application/json'}
+    response = requests.post('http://localhost:4000/refresh-token', headers=headers, json={'refresh_token': request.session['refresh_token']})
+    if response.status_code != 200:
+        return False
+    data = response.json()
+    if 'access_token' in data:
+        request.session['access_token'] = data['access_token']
+        request.session['refresh_token'] = data['refresh_token']
+        return True
+    else:
+        return False
+
 def index(request):
     if 'user' in request.session:
-        print(request.session['user'])
         return render(request, 'index.html', {'user': request.session['user']})
     else:
-        return redirect('login')
+        if 'refresh_token' in request.session:
+            is_refreshed = refresh_token(request)
+            if is_refreshed:
+                return render(request, 'index.html', {'user': request.session['user']})
+            else:
+                return redirect('login')
     
 def login(request):
     if request.method == 'POST':
@@ -70,10 +87,11 @@ def create_container(request):
         else:
             print(request.session['access_token'])
             container_name = request.POST.get('container_name')
+            container_password = request.POST.get('container_password')
             ram = int(request.POST.get('ram'))
             core = int(request.POST.get('core'))
             headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {request.session["access_token"]}'}
-            body = {"ContainerName": container_name, "ContainerRam": ram, "ContainerCore": core}
+            body = {"ContainerName": container_name,"ContainerPassword": container_password, "ContainerRam": ram, "ContainerCore": core}
             print(body)
             response = requests.post('http://103.181.182.243:8080/container/create', headers=headers, json=body)
             if response.status_code == 200:
