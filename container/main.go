@@ -16,6 +16,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -157,6 +158,19 @@ func updateContainer(cont_id string, new_container_ram int) (string, error) {
 	message := fmt.Sprintf("container with id %s has been updated", cont_id)
 	return message, err
 }
+
+func deleteContainer(cont_id string) (string, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return "", err
+	}
+	cli.ContainerRemove(context.Background(), cont_id, container.RemoveOptions{
+		Force: true,
+	})
+
+	return "container has been deleted", err
+}
+
 func init() {
 	initializers.LoadEnv()
 }
@@ -167,6 +181,8 @@ func main() {
 
 	r.POST("/container/create", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerCreateRequest
+		claims := ctx.MustGet("claims").(jwt.MapClaims)
+		user_id := int(claims["uuid"].(float64))
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -193,7 +209,7 @@ func main() {
 			ContainerName: request.ContainerName,
 			ContainerRam:  request.ContainerRam,
 			ContainerCore: request.ContainerCore,
-			UserID:        request.UserID,
+			UserID:        user_id,
 		}
 		cont := db.Create(&containerData)
 		if cont.Error != nil {
@@ -209,23 +225,45 @@ func main() {
 		ctx.JSON(
 			http.StatusOK,
 			gin.H{
-				"container_Id": container_id,
-				"ssh_port":     hostPort,
+				"container_Id":   container_id,
+				"container_name": request.ContainerName,
+				"ssh_port":       hostPort,
 			},
 		)
 	})
 
 	r.POST("/container/start", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerRequest
+		var container models.Container
+		claims := ctx.MustGet("claims").(jwt.MapClaims)
+		user_id := int(claims["uuid"].(float64))
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
 				http.StatusBadRequest,
 				gin.H{
-					"message": "bad request",
+					"message": "request error",
 				},
 			)
 			return
+		}
+		container_query := db.First(&container, request.ContainerID)
+		if container_query != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to query container",
+				},
+			)
+			return
+		}
+		if container.UserID != user_id {
+			ctx.JSON(
+				http.StatusUnauthorized,
+				gin.H{
+					"message": "youre not authorized to access this container",
+				},
+			)
 		}
 		message, err := startContainer(request.ContainerID)
 		if err != nil {
@@ -247,6 +285,9 @@ func main() {
 
 	r.POST("/container/pause", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerRequest
+		var container models.Container
+		claims := ctx.MustGet("claims").(jwt.MapClaims)
+		user_id := int(claims["uuid"].(float64))
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -256,6 +297,24 @@ func main() {
 				},
 			)
 			return
+		}
+		container_query := db.First(&container, request.ContainerID)
+		if container_query != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to query container",
+				},
+			)
+			return
+		}
+		if container.UserID != user_id {
+			ctx.JSON(
+				http.StatusUnauthorized,
+				gin.H{
+					"message": "youre not authorized to access this container",
+				},
+			)
 		}
 		message, err := pauseContainer(request.ContainerID)
 		if err != nil {
@@ -278,6 +337,9 @@ func main() {
 
 	r.POST("/container/unpause", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerRequest
+		var container models.Container
+		claims := ctx.MustGet("claims").(jwt.MapClaims)
+		user_id := int(claims["uuid"].(float64))
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -287,6 +349,24 @@ func main() {
 				},
 			)
 			return
+		}
+		container_query := db.First(&container, request.ContainerID)
+		if container_query != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to query container",
+				},
+			)
+			return
+		}
+		if container.UserID != user_id {
+			ctx.JSON(
+				http.StatusUnauthorized,
+				gin.H{
+					"message": "youre not authorized to access this container",
+				},
+			)
 		}
 		message, err := unpauseContainer(request.ContainerID)
 		if err != nil {
@@ -309,6 +389,9 @@ func main() {
 
 	r.POST("/container/stop", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerRequest
+		var container models.Container
+		claims := ctx.MustGet("claims").(jwt.MapClaims)
+		user_id := int(claims["uuid"].(float64))
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -319,6 +402,25 @@ func main() {
 			)
 			return
 		}
+		container_query := db.First(&container, request.ContainerID)
+		if container_query != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to query container",
+				},
+			)
+			return
+		}
+		if container.UserID != user_id {
+			ctx.JSON(
+				http.StatusUnauthorized,
+				gin.H{
+					"message": "youre not authorized to access this container",
+				},
+			)
+		}
+
 		message, err := stopContainer(request.ContainerID)
 		if err != nil {
 			ctx.JSON(
@@ -337,9 +439,11 @@ func main() {
 		)
 	})
 
-	r.POST("/container/list", func(ctx *gin.Context) {
+	r.POST("/container/list", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerListRequest
 		var containers []models.Container
+		claims := ctx.MustGet("claims").(jwt.MapClaims)
+		user_id := claims["uuid"]
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -350,7 +454,7 @@ func main() {
 			)
 			return
 		}
-		data := db.Where("user_id= ?", request.UserID).Find(&containers)
+		data := db.Where("user_id= ?", user_id).Find(&containers)
 		if data.Error != nil {
 			ctx.JSON(
 				http.StatusNotFound,
@@ -368,8 +472,11 @@ func main() {
 		)
 	})
 
-	r.POST("container/update", func(ctx *gin.Context) {
+	r.POST("container/update", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerUpdateRequest
+		var container models.Container
+		claims := ctx.MustGet("claims").(jwt.MapClaims)
+		user_id := int(claims["uuid"].(float64))
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -380,12 +487,81 @@ func main() {
 			)
 			return
 		}
+		container_query := db.First(&container, request.ContainerID)
+		if container_query != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to query container",
+				},
+			)
+			return
+		}
+		if container.UserID != user_id {
+			ctx.JSON(
+				http.StatusUnauthorized,
+				gin.H{
+					"message": "youre not authorized to access this container",
+				},
+			)
+		}
 		message, err := updateContainer(request.ContainerID, request.NewRam)
 		if err != nil {
 			ctx.JSON(
 				http.StatusNotFound,
 				gin.H{
 					"message": "Failed to update container",
+				},
+			)
+			return
+		}
+		ctx.JSON(
+			http.StatusOK,
+			gin.H{
+				"message": message,
+			},
+		)
+	})
+
+	r.POST("/container/delete", middleware.JWTMiddleware(), func(ctx *gin.Context) {
+		var request request.ContainerRequest
+		var container models.Container
+		claims := ctx.MustGet("claims").(jwt.MapClaims)
+		user_id := claims["uuid"]
+		err := ctx.BindJSON(&request)
+		if err != nil {
+			ctx.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"message": "request error",
+				},
+			)
+			return
+		}
+		container_query := db.First(&container, request.ContainerID)
+		if container_query != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "failed to query container",
+				},
+			)
+			return
+		}
+		if container.UserID != user_id {
+			ctx.JSON(
+				http.StatusUnauthorized,
+				gin.H{
+					"message": "youre not authorized to access this container",
+				},
+			)
+		}
+		message, err := deleteContainer(request.ContainerID)
+		if err != nil {
+			ctx.JSON(
+				http.StatusNotFound,
+				gin.H{
+					"message": "Failed to delete container",
 				},
 			)
 			return
