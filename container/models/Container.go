@@ -9,4 +9,5 @@ type Container struct {
 	ContainerRam  int
 	ContainerCore int
 	UserID        string
+	ContainerPort string
 }

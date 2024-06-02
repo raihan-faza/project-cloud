@@ -210,6 +210,7 @@ func main() {
 			ContainerRam:  request.ContainerRam,
 			ContainerCore: request.ContainerCore,
 			UserID:        user_id,
+			ContainerPort: hostPort,
 		}
 		cont := db.Create(&containerData)
 		if cont.Error != nil {
