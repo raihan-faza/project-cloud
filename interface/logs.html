@@ -51,7 +51,6 @@
                 </ul>
             </div>
         </aside>
-
         <div class="main">
             <nav class="navbar navbar-expand px-3 border-bottom">
                 <button class="btn" id="sidebar-toggle" type="button">
@@ -73,48 +72,71 @@
             </nav>
             <main class="content px-3 py-2">
                 <div class="container-fluid">
-                    <main class="content px-3 py-2">
-                        <div class="container-fluid center">
-                            <h4 class="mb-3">Top Up! Give us da money!</h4>
-                            <div class="container-fluid center">
-                                <img src="image/Gopay.png" alt="" height="100">
+                    <div class="mb-3">
+                        <h4>Activity Logs</h4>
+                    </div>
+                    <!-- Table Element -->
+                    <div class="card border-0">
+                        <div class="card-body">
+                            <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center py-4">
+                                <h4 class="card-subtitle text-muted">
+                                    Your Logs
+                                </h4>
                             </div>
-                            <form>
-                                <div class="row g-3">
-                                    <div class="col-sm-6">
-                                        <label for="firstName" class="form-label">Nominal</label>
-                                        <input type="number" class="form-control" id="firstName" placeholder="How much do ya want, dude?" step="10000" required>
-                                    </div>
-                                </div>
-                
-                                <hr class="my-4">
-                
-                                <h4 class="mb-3">Payment</h4>
-                
-                                <div class="my-3">
-                                    <div class="form-check">
-                                        <input id="credit" name="paymentMethod" type="radio" class="form-check-input" checked required>
-                                        <label class="form-check-label" for="credit">Gopay</label>
-                                    </div>
-                                </div>
-                
-                                <hr class="my-4">
-                
-                                <a href="paysuccess.html" class="w-100 btn-sm btn-outlined-secondary btn-gray-800 d-inline-flex align-items-center" type="submit">Continue to checkout</a>
-                            </form>
+                            <div class="table-responsive">
+                                <table class="table align-items-center table-flush">
+                                    <thead class="thead-light">
+                                    <tr class="text-center">
+                                        <th class="border-bottom" scope="col">Date</th>
+                                        <th class="border-bottom" scope="col">Time</th>
+                                        <th class="border-bottom" scope="col">Name</th>
+                                        <th class="border-bottom" scope="col">ID</th>
+                                        <th class="border-bottom" scope="col">Description</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-center align-middle">14-06-2024</td>
+                                            <td class="text-center align-middle">15:34:21</td>
+                                            <td class="text-center align-middle">Example 1</td>
+                                            <td class="text-center align-middle">10002344</td>
+                                            <td class="text-center align-middle">Your container has been started</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </main>
+                    </div>
                 </div>
             </main>
-
             <a href="#" class="theme-toggle">
                 <i class="fa-regular fa-moon"></i>
                 <i class="fa-regular fa-sun"></i>
             </a>
+            <footer class="footer">
+                <div class="container-fluid">
+                    <div class="row text-muted">
+                        <div class="col-6 text-start">
+                            <p class="mb-0">
+                                <a href="#" class="text-muted">
+                                    <strong>El Ducka</strong>
+                                </a>
+                            </p>
+                        </div>
+                        <div class="col-6 text-end">
+                            <ul class="list-inline">
+                                <li class="list-inline-item">
+                                    <a href="#" class="text-muted">About Us</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </footer>
         </div>
-
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/script.js"></script>
 </body>
+</html>
