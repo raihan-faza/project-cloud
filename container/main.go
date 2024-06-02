@@ -211,6 +211,8 @@ func main() {
 			ContainerCore: request.ContainerCore,
 			UserID:        user_id,
 			ContainerPort: hostPort,
+			IsPaused:      false,
+			IsStopped:     false,
 		}
 		cont := db.Create(&containerData)
 		if cont.Error != nil {
@@ -276,6 +278,8 @@ func main() {
 			)
 			return
 		}
+		container.IsStopped = false
+		db.Save(&container)
 		ctx.JSON(
 			http.StatusOK,
 			gin.H{
@@ -327,6 +331,8 @@ func main() {
 			)
 			return
 		}
+		container.IsPaused = true
+		db.Save(&container)
 		ctx.JSON(
 			http.StatusOK,
 			gin.H{
@@ -379,6 +385,8 @@ func main() {
 			)
 			return
 		}
+		container.IsPaused = false
+		db.Save(&container)
 		ctx.JSON(
 			http.StatusOK,
 			gin.H{
@@ -433,6 +441,8 @@ func main() {
 			)
 			return
 		}
+		container.IsStopped = true
+		db.Save(&container)
 		ctx.JSON(
 			http.StatusOK,
 			gin.H{
