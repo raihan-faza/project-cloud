@@ -1,8 +1,27 @@
 from flask import Flask, jsonify, request
 from docker_events import log_event
+import jwt
+from functools import wraps
+
+SECRET_KEY = '1becc05fed3a8ef601b365a7ae8daed7a997856161e0876b9e1c535d89acaba8'
 
 app = Flask(__name__)
 
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[1]
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 403
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        except Exception as e:
+            return jsonify({'message': 'Token is invalid!'}), 403
+        return f(data['user_id'], *args, **kwargs)
+    return decorated
+    
 # @app.route('/events', methods=['GET'])
 # def get_events():
 #     try:
