@@ -439,21 +439,10 @@ func main() {
 		)
 	})
 
-	r.POST("/container/list", middleware.JWTMiddleware(), func(ctx *gin.Context) {
-		var request request.ContainerListRequest
+	r.GET("/container/list", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var containers []models.Container
 		claims := ctx.MustGet("claims").(jwt.MapClaims)
 		user_id := claims["uuid"]
-		err := ctx.BindJSON(&request)
-		if err != nil {
-			ctx.JSON(
-				http.StatusBadRequest,
-				gin.H{
-					"message": "request error",
-				},
-			)
-			return
-		}
 		data := db.Where("user_id= ?", user_id).Find(&containers)
 		if data.Error != nil {
 			ctx.JSON(
