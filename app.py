@@ -35,9 +35,14 @@ def get_log_file():
     except FileNotFoundError:
         return jsonify({"error": "Log file does not exist yet."}), 404
 
-@app.route('/log/<container_id>', methods=['GET'])
-def get_log_file_by_container_id(container_id):
+@app.route('/log', methods=['POST'])
+def get_log_file_by_container_id():
     try:
+        data = request.get_json()
+        container_id = data.get('container_id')
+        if not container_id:
+            return jsonify({"error": "Container ID is required"}), 400
+
         with open("docker_events.log", "r") as log_file:
             lines = log_file.readlines()
             # Parse each log entry and filter by container ID
