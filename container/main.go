@@ -60,7 +60,7 @@ func createContainer(container_name string, container_ram int, container_core in
 
 	cont, err := cli.ContainerCreate(context.Background(),
 		&container.Config{
-			Image: "ubuntu-ssh:latest",
+			Image: "ubuntu-ssh-custom:latest",
 			ExposedPorts: nat.PortSet{
 				"22/tcp": struct{}{},
 			},
@@ -182,7 +182,7 @@ func main() {
 	r.POST("/container/create", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var request request.ContainerCreateRequest
 		claims := ctx.MustGet("claims").(jwt.MapClaims)
-		user_id := int(claims["uuid"].(float64))
+		user_id := claims["uuid"].(string)
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -210,6 +210,7 @@ func main() {
 			ContainerRam:  request.ContainerRam,
 			ContainerCore: request.ContainerCore,
 			UserID:        user_id,
+			ContainerPort: hostPort,
 		}
 		cont := db.Create(&containerData)
 		if cont.Error != nil {
@@ -236,7 +237,7 @@ func main() {
 		var request request.ContainerRequest
 		var container models.Container
 		claims := ctx.MustGet("claims").(jwt.MapClaims)
-		user_id := int(claims["uuid"].(float64))
+		user_id := claims["uuid"].(string)
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -248,7 +249,7 @@ func main() {
 			return
 		}
 		container_query := db.First(&container, request.ContainerID)
-		if container_query != nil {
+		if container_query == nil {
 			ctx.JSON(
 				http.StatusNotFound,
 				gin.H{
@@ -287,7 +288,7 @@ func main() {
 		var request request.ContainerRequest
 		var container models.Container
 		claims := ctx.MustGet("claims").(jwt.MapClaims)
-		user_id := int(claims["uuid"].(float64))
+		user_id := claims["uuid"].(string)
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -299,7 +300,7 @@ func main() {
 			return
 		}
 		container_query := db.First(&container, request.ContainerID)
-		if container_query != nil {
+		if container_query == nil {
 			ctx.JSON(
 				http.StatusNotFound,
 				gin.H{
@@ -339,7 +340,7 @@ func main() {
 		var request request.ContainerRequest
 		var container models.Container
 		claims := ctx.MustGet("claims").(jwt.MapClaims)
-		user_id := int(claims["uuid"].(float64))
+		user_id := claims["uuid"].(string)
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -351,7 +352,7 @@ func main() {
 			return
 		}
 		container_query := db.First(&container, request.ContainerID)
-		if container_query != nil {
+		if container_query == nil {
 			ctx.JSON(
 				http.StatusNotFound,
 				gin.H{
@@ -391,7 +392,8 @@ func main() {
 		var request request.ContainerRequest
 		var container models.Container
 		claims := ctx.MustGet("claims").(jwt.MapClaims)
-		user_id := int(claims["uuid"].(float64))
+		user_id := claims["uuid"].(string)
+
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -403,7 +405,7 @@ func main() {
 			return
 		}
 		container_query := db.First(&container, request.ContainerID)
-		if container_query != nil {
+		if container_query == nil {
 			ctx.JSON(
 				http.StatusNotFound,
 				gin.H{
@@ -442,7 +444,7 @@ func main() {
 	r.GET("/container/list", middleware.JWTMiddleware(), func(ctx *gin.Context) {
 		var containers []models.Container
 		claims := ctx.MustGet("claims").(jwt.MapClaims)
-		user_id := claims["uuid"]
+		user_id := claims["uuid"].(string)
 		data := db.Where("user_id= ?", user_id).Find(&containers)
 		if data.Error != nil {
 			ctx.JSON(
@@ -465,7 +467,7 @@ func main() {
 		var request request.ContainerUpdateRequest
 		var container models.Container
 		claims := ctx.MustGet("claims").(jwt.MapClaims)
-		user_id := int(claims["uuid"].(float64))
+		user_id := claims["uuid"].(string)
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -477,7 +479,7 @@ func main() {
 			return
 		}
 		container_query := db.First(&container, request.ContainerID)
-		if container_query != nil {
+		if container_query == nil {
 			ctx.JSON(
 				http.StatusNotFound,
 				gin.H{
@@ -504,6 +506,8 @@ func main() {
 			)
 			return
 		}
+		container.ContainerRam = request.NewRam
+		db.Save(&container)
 		ctx.JSON(
 			http.StatusOK,
 			gin.H{
@@ -516,7 +520,7 @@ func main() {
 		var request request.ContainerRequest
 		var container models.Container
 		claims := ctx.MustGet("claims").(jwt.MapClaims)
-		user_id := claims["uuid"]
+		user_id := claims["uuid"].(string)
 		err := ctx.BindJSON(&request)
 		if err != nil {
 			ctx.JSON(
@@ -528,7 +532,7 @@ func main() {
 			return
 		}
 		container_query := db.First(&container, request.ContainerID)
-		if container_query != nil {
+		if container_query == nil {
 			ctx.JSON(
 				http.StatusNotFound,
 				gin.H{
@@ -555,6 +559,7 @@ func main() {
 			)
 			return
 		}
+		db.Delete(&container)
 		ctx.JSON(
 			http.StatusOK,
 			gin.H{

@@ -31,8 +31,14 @@
                         </a>
                     </li>
                     <li class="sidebar-item">
+                        <a href="logs.html" class="sidebar-link collapsed" data-bs-target="#auth"
+                            aria-expanded="false"><i class="fa-regular bi bi-file-earmark pe-2"></i>
+                            Activity Logs
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
                         <a href="recharge.html" class="sidebar-link collapsed" data-bs-target="#posts"
-                            aria-expanded="false"><i class="fa-solid fa-list pe-2"></i>
+                            aria-expanded="false"><i class="fa-solid bi bi-wallet pe-2"></i>
                             Top Up
                         </a>
                     </li>
@@ -147,43 +153,24 @@
                                             <td class="text-center align-middle">1 Hours Ago</td>
                                             <td class="text-center align-middle">
                                                 <div class="btn-group" role="group" aria-label="Basic mixed styles example">
-                                                    <button type="button" class="btn btn-success">
+                                                    <button type="button" class="btn btn-success" title="Start">
                                                         <i onclick="playChangeButton(this)" class="bi bi-play-fill"></i>
                                                     </button>
-                                                    <button type="button" class="btn btn-warning">
+                                                    <button type="button" class="btn btn-warning" title="Stop">
                                                         <i class="bi bi-stop-fill"></i>
                                                     </button>
-                                                    <button type="button" class="btn btn-danger">
+                                                    <button type="button" class="btn btn-danger" title="Delete">
                                                         <i class="bi bi-trash-fill"></i>
                                                     </button>
-                                                    <button type="button" class="btn btn-success">
+                                                    <button type="button" class="btn btn-success" title="Edit">
                                                         <i class="bi bi-pencil-square"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-warning" title="See Logs">
+                                                        <i class="bi bi-file-earmark-fill"></i>
                                                     </button>
                                                 </div>
                                             </td>
                                         </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="card-header">
-                                <div class="row align-items-center">
-                                    <h4 class="card-subtitle text-muted">
-                                        Activity Logs
-                                    </h4>
-                                </div>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table align-items-center table-flush">
-                                    <thead class="thead-light">
-                                    <tr class="text-center">
-                                        <th class="border-bottom" scope="col">Date</th>
-                                        <th class="border-bottom" scope="col">Time</th>
-                                        <th class="border-bottom" scope="col">Name</th>
-                                        <th class="border-bottom" scope="col">ID</th>
-                                        <th class="border-bottom" scope="col">Description</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
                                     </tbody>
                                 </table>
                             </div>
