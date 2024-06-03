@@ -14,4 +14,5 @@ urlpatterns = [
     path("start_container/", views.start_container_view, name="start_container"),
     path("edit_container/", views.edit_container_view, name="edit_container"),
     path("profile/", views.profile, name="profile"),
+    path("logs/", views.logs, name="logs"),
 ]

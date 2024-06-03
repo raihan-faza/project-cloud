@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from docker_events import log_event, handle_docker_events
+# from docker_events import log_event, handle_docker_events
 import jwt
 from functools import wraps
 
@@ -36,8 +36,28 @@ def token_required(f):
 @token_required
 def start_events(user_id):
     data = request.get_json()
-    docker_events.handle_docker_events(user_id)
+    # handle_docker_events(user_id)
     return jsonify({"status": "Event logging started", "user_id": user_id}), 200
+
+@app.route('/log/add', methods=['POST'])
+@token_required
+def add_log_entry(user_id):
+    data = request.get_json()
+    container_id = data.get('container_id')
+    action = data.get('action')
+    if not all([container_id, action]):
+        return jsonify({"error": "Container ID, Container Name, and Action are required"}), 400
+
+    from datetime import datetime
+    date = datetime.now().strftime("%Y-%m-%d")
+    time = datetime.now().strftime("%H:%M:%S")
+
+    log_entry = f"{date};{time};{user_id};{container_id};{action}\n"
+
+    with open("docker_events.log", "a") as log_file:
+        log_file.write(log_entry)
+
+    return jsonify({"message": "Log entry added successfully"}), 201
 
 @app.route('/log', methods=['GET'])
 @token_required
@@ -49,17 +69,17 @@ def get_log_file(user_id):
             log_entries = []
             for line in lines:
                 parts = line.strip().split(";")
-                if len(parts) == 6:
-                    date, time, log_user_id, container_name, container_id, action = parts
-                    log_entry = {
-                        "date": date,
-                        "time": time,
-                        "user_id":log_user_id,
-                        "container_name": container_name,
-                        "container_id": container_id,
-                        "action": action
-                    }
-                    log_entries.append(log_entry)
+                if len(parts) == 5:
+                    date, time, log_user_id, container_id, action = parts
+                    if str(user_id) == log_user_id:
+                        log_entry = {
+                            "date": date,
+                            "time": time,
+                            "user_id":log_user_id,
+                            "container_id": container_id,
+                            "action": action
+                        }
+                        log_entries.append(log_entry)
             return jsonify(log_entries), 200
     except FileNotFoundError:
         return jsonify({"error": "Log file does not exist yet."}), 404
@@ -77,14 +97,13 @@ def get_log_file_by_container_id_post(user_id):
             log_entries = []
             for line in lines:
                 parts = line.strip().split(";")
-                if len(parts) == 6:  # Including user_id
+                if len(parts) == 5:  # Including user_id
                     date, time, log_user_id, container_name, log_container_id, action = parts
                     if log_container_id == container_id:
                         log_entry = {
                             "date": date,
                             "time": time,
                             "user_id": log_user_id,
-                            "container_name": container_name,
                             "container_id": log_container_id,
                             "action": action
                         }
@@ -102,14 +121,13 @@ def get_log_file_by_container_id(user_id, container_id):
             log_entries = []
             for line in lines:
                 parts = line.strip().split(";")
-                if len(parts) == 6:  # Including user_id
-                    date, time, log_user_id, container_name, log_container_id, action = parts
+                if len(parts) == 5:  # Including user_id
+                    date, time, log_user_id, log_container_id, action = parts
                     if log_container_id == container_id:
                         log_entry = {
                             "date": date,
                             "time": time,
                             "user_id": log_user_id,
-                            "container_name": container_name,
                             "container_id": log_container_id,
                             "action": action
                         }

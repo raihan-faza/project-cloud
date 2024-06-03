@@ -184,7 +184,7 @@ async def login(user: User, db: Session = Depends(get_db)):
     access_token = create_access_token({"email": db_user.email, "username": db_user.username, "uuid": db_user.uuid})
     refresh_token = create_refresh_token({"email": db_user.email, "username": db_user.username, "uuid": db_user.uuid})
 
-    return JSONResponse(content={"access_token": access_token, "refresh_token": refresh_token, "user":{"name": db_user.username, "email":db_user.email, "balance": db_user.balance}})
+    return JSONResponse(content={"access_token": access_token, "refresh_token": refresh_token, "user":{"name": db_user.username, "email":db_user.email, "balance": db_user.balance, "uuid": db_user.uuid}})
 
 credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,

@@ -1,4 +1,4 @@
-import docker
+# import docker
 from dotenv import load_dotenv
 from fastapi import Depends, Request, HTTPException
 from requests import Session
@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 load_dotenv()
 
 app = APIRouter()
-client = docker.from_env()
+# client = docker.from_env()
 
 
 @app.post("/container/action/")

@@ -1,13 +1,17 @@
+from datetime import datetime
 import os
 from django.shortcuts import redirect, render
+from dotenv import load_dotenv
 import requests
 from django.contrib import messages
 # Create your views here.
+load_dotenv()
 API_URL = os.getenv("API_URL")
+LOG_URL = os.getenv("LOG_URL")
 
 def refresh_token(request):
     headers = {'Content-Type': 'application/json'}
-    response = requests.post(f'http://{API_URL}/refresh-token', headers=headers, json={'refresh_token': request.session['refresh_token']})
+    response = requests.post(f'{API_URL}/refresh-token', headers=headers, json={'refresh_token': request.session['refresh_token']})
     if response.status_code != 200:
         return False
     data = response.json()
@@ -47,7 +51,7 @@ def login(request):
             email = request.POST.get('email')
             password = request.POST.get('password')
             headers = {'Content-Type': 'application/json'}
-            response = requests.post(f'http://{API_URL}/login', headers=headers, json={'email': email, 'password': password})
+            response = requests.post(f'{API_URL}/login', headers=headers, json={'email': email, 'password': password})
             data = response.json()
             if 'access_token' in data and 'refresh_token' in data:
                 request.session['access_token'] = data['access_token']
@@ -68,7 +72,7 @@ def register(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         headers = {'Content-Type': 'application/json'}
-        response = requests.post(f'http://{API_URL}/register', headers=headers, json={'email': email, 'username': username, 'password': password})
+        response = requests.post(f'{API_URL}/register', headers=headers, json={'email': email, 'username': username, 'password': password})
         data = response.json()
         if 'message' in data:
             messages.success(request, data['message'])
@@ -83,7 +87,7 @@ def recharge(request):
             gross_amount = request.POST.get('gross_amount')
             headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {request.session["access_token"]}'}
             body = {'gross_amount': gross_amount}
-            response = requests.post(f'http://{API_URL}/payment/charge', headers=headers, json=body)
+            response = requests.post(f'{API_URL}/payment/charge', headers=headers, json=body)
             data = response.json()
             if 'message' in data:
                 messages.success(request, data['data'].get('actions')[1].get('url'))
@@ -113,16 +117,18 @@ def create_container(request):
             print(body)
             response = requests.post('http://103.181.182.243:8080/container/create', headers=headers, json=body)
             if response.status_code == 200:
+                log_entry = {
+                    "user_id": request.session['user']['uuid'],
+                    "container_id": response.json().get('container_Id'),
+                    "action": "create"
+                }
+                resp = requests.post(f'{LOG_URL}/log/add', json=log_entry, headers=headers)
+                log = resp.json()
+                print(log)
                 data = response.json()
                 if 'container_Id' in data:
-                    print(data)
-                    messages.success(request, 'Container created successfully')
-                    return redirect('index')
-                else:
-                    messages.error(request, 'Failed to create container')
                     return redirect('index')
             else:
-                messages.error(request, 'Failed to create container')
                 print(response.json())
                 return redirect('index')
     return redirect('index')
@@ -190,3 +196,20 @@ def profile(request):
         return render(request, 'account.html', {'user': request.session['user']})
     else:
         return redirect('login')
+    
+def logs(request):
+    if 'user' in request.session:
+        container_id = request.POST.get('container_id')
+        print("1", container_id)
+        try:
+            log_list = requests.get(f'{LOG_URL}/log/{container_id}', headers={'Authorization': f'Bearer {request.session["access_token"]}'})
+            print("Hello", container_id)
+            if log_list.status_code == 200:
+                data = log_list.json()
+                print("Hello", data)
+                return render(request, 'logs.html', {'user': request.session['user'], 'logs': data})
+            else:
+                return render(request, 'logs.html', {'user': request.session['user']})
+        except Exception as e:
+            print(e)
+            return render(request, 'logs.html', {'user': request.session['user']})

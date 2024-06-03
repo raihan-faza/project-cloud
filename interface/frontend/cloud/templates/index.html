@@ -196,9 +196,13 @@
                                                             <i class="bi bi-pencil-square"></i>
                                                         </button>
                                                     </div>
-                                                    <button type="button" class="btn btn-warning" title="See Logs">
-                                                        <i class="bi bi-file-earmark-fill"></i>
-                                                    </button>
+                                                    <form id="logForm" method="POST" action="{% url 'logs' %}">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" id="containerId" name="container_id" value="{{ container.ContainerID }}">
+                                                        <button type="submit" class="btn btn-warning" title="See Logs">
+                                                            <i class="bi bi-file-earmark-fill"></i>
+                                                        </button>
+                                                    </form>
                                                     
                                                     {% comment %} Modal For Edit Container {% endcomment %}
                                                     <div class="modal fade" id="editModal{{ container.ContainerID }}" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
