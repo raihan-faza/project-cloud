@@ -56,7 +56,7 @@ async def create_charge(req: Request, token:str = Depends(get_current_user), db:
 async def notification(req: Request, db: Session = Depends(get_db)):
     notification = await req.json()
     payment = db.query(Payment).filter(Payment.order_id == notification.get("order_id")).first()
-    
+    print(payment)
     if payment:
         if notification.get('transaction_status') == 'settlement' or notification.get('transaction_status') == 'capture':
             user = db.query(User).filter(User.id == payment.user_id).first()
