@@ -25,18 +25,21 @@ def refresh_token(request):
 def index(request):
     if 'user' in request.session:
         try:
-            container_list = requests.get('http://103.181.182.243:8080/container/list/', headers={'Authorization': f'Bearer {request.session["access_token"]}'})
             profile = requests.get(f'{API_URL}/profile', headers={'Authorization': f'Bearer {request.session["access_token"]}'})
             user = profile.json().get('user')
-            if container_list.status_code == 200:
+            try:
+                container_list = requests.get('http://103.181.182.243:8080/container/list/', headers={'Authorization': f'Bearer {request.session["access_token"]}'})
+                print(profile.json())
                 data = container_list.json()
                 print(data.get("data"))
                 return render(request, 'index.html', {'user': user, 'containers': data.get("data")})
-            else:
+            except Exception as e:
+                print(e)
+                print(user)
                 return render(request, 'index.html', {'user': user})
         except Exception as e:
             print(e)
-            return render(request, 'index.html', {'user': user})
+            return render(request, 'index.html', {'user': request.session['user']})
     else:
         if 'refresh_token' in request.session:
             is_refreshed = refresh_token(request)
@@ -92,9 +95,8 @@ def recharge(request):
             response = requests.post(f'{API_URL}/payment/charge', headers=headers, json=body)
             data = response.json()
             if 'message' in data:
-                messages.success(request, data['data'].get('actions')[1].get('url'))
-                # print(data['data'].get('actions')[1].get('url'))
-                return redirect(data['data'].get('actions')[1].get('url'))
+                print(data)
+                return redirect(data['data'].get('redirect_url'))
     return render(request, 'recharge.html')
 
 def logout(request):

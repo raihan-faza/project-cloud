@@ -84,13 +84,6 @@
             <main class="content px-3 py-2">
               <div class="container-fluid center">
                 <h4 class="mb-3">Top Up! Give us da money!</h4>
-                <div class="container-fluid center">
-                  <img
-                    src="{% static 'image/Gopay.png'%}"
-                    alt=""
-                    height="100"
-                  />
-                </div>
                 <form method="POST" action="{% url 'recharge'%}">
                   {% csrf_token %}
                   <div class="row g-3">
@@ -105,23 +98,6 @@
                         step="10000"
                         required
                       />
-                    </div>
-                  </div>
-
-                  <hr class="my-4" />
-
-                  <h4 class="mb-3">Payment</h4>
-
-                  <div class="my-3">
-                    <div class="form-check">
-                      <input
-                        id="credit"
-                        type="radio"
-                        class="form-check-input"
-                        checked
-                        required
-                      />
-                      <label class="form-check-label" for="credit">Gopay</label>
                     </div>
                   </div>
 

@@ -24,6 +24,8 @@ class Payment(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int | None = Field(default=None, foreign_key='user.id')
     order_id: str
+    date: datetime = datetime.now()
+    gross_amount: int
 
 class Container(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

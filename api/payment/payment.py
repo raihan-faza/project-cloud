@@ -2,8 +2,10 @@ import os
 import uuid
 from dotenv import load_dotenv
 from fastapi import Depends, Request
+from fastapi.responses import RedirectResponse
 from fastapi.routing import APIRouter
 import midtransclient
+from midtransclient import Snap
 from requests import Session
 from schema import Payment, User, get_db
 from auth.auth import get_current_user
@@ -11,7 +13,7 @@ load_dotenv()
 
 
 app = APIRouter()
-core = midtransclient.CoreApi(
+snap = midtransclient.Snap(
     is_production=False,
     server_key=os.getenv("MIDTRANS_SERVER_KEY"),
     client_key=os.getenv("MIDTRANS_CLIENT_KEY")
@@ -21,23 +23,23 @@ core = midtransclient.CoreApi(
 async def create_charge(req: Request, token:str = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         data = await req.json()
+        order_id = str(uuid.uuid4())
         charge_request = {
-            "payment_type": "gopay",
             "transaction_details": {
-                "order_id": str(uuid.uuid4()),
+                "order_id": order_id,
                 "gross_amount": data.get("gross_amount")
             }
         }
-        print(token)
-        charge_response = core.charge(charge_request)
-        new_payment = Payment(user_id=token.get("id"), order_id=charge_response.get("order_id"))
+        charge_response = snap.create_transaction(charge_request)
+        print(charge_response)
+        new_payment = Payment(user_id=token.get("id"), order_id=order_id, gross_amount=data.get("gross_amount"))
         db.add(new_payment)
         db.commit()
     except Exception as e:
         print(e)
         raise e
     # return {"message":"success"}
-    return {"message":"success", "data":charge_response, "user": token.get("username")}
+    return {"message":"success", "data":charge_response}
 
 # @app.post("/charge")
 # async def create_charge():
